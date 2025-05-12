@@ -755,20 +755,70 @@ function Run-Publish {
                 $repoUrlWithToken = "https://$env:GITHUB_TOKEN@github.com/$owner/$repo.git"
                 git remote set-url origin $repoUrlWithToken
                 
-                # Push changes to remote
+                # Fetch the latest changes from remote
+                Write-Host "Fetching latest changes from remote repository..." -ForegroundColor Cyan
+                git fetch origin
+                
+                # Push changes to remote with different strategies if simple push fails
                 Write-Host "Pushing changes to main branch..." -ForegroundColor Cyan
                 try {
+                    # First attempt: simple push
                     git push -u origin main
                     $pushSuccess = $?
+                    
+                    # If push failed, try pull then push
+                    if (-not $pushSuccess) {
+                        Write-Host "Initial push failed. Trying to integrate remote changes..." -ForegroundColor Yellow
+                        
+                        # Try to pull with rebase first (keeps commits cleaner)
+                        Write-Host "Attempting git pull with rebase strategy..." -ForegroundColor Cyan
+                        git pull --rebase origin main
+                        $pullSuccess = $?
+                        
+                        if (-not $pullSuccess) {
+                            # If rebase fails, try regular merge
+                            Write-Host "Rebase strategy failed. Trying regular merge..." -ForegroundColor Yellow
+                            git pull origin main
+                            $pullSuccess = $?
+                            
+                            if (-not $pullSuccess) {
+                                Write-Host "Could not integrate remote changes automatically." -ForegroundColor Red
+                                Write-Host "Remote repository history differs significantly from local." -ForegroundColor Red
+                                
+                                # Ask user if they want to force push (potentially dangerous)
+                                Write-Host ""
+                                Write-Host "CAUTION: You can force push your changes, but this may OVERWRITE" -ForegroundColor Red
+                                Write-Host "remote work that's not in your local repository." -ForegroundColor Red
+                                $forcePush = Read-Host "Force push? (y/N)"
+                                
+                                if ($forcePush -eq "y" -or $forcePush -eq "Y") {
+                                    Write-Host "Force pushing to main branch..." -ForegroundColor Yellow
+                                    git push -f origin main
+                                    $pushSuccess = $?
+                                } else {
+                                    Write-Host "Force push cancelled." -ForegroundColor Yellow
+                                    $pushSuccess = $false
+                                }
+                            } else {
+                                # Try pushing again after successful merge
+                                git push origin main
+                                $pushSuccess = $?
+                            }
+                        } else {
+                            # Try pushing again after successful rebase
+                            git push origin main
+                            $pushSuccess = $?
+                        }
+                    }
                     
                     if ($pushSuccess) {
                         Write-Host "Source code pushed to main branch successfully!" -ForegroundColor Green
                     } else {
                         Write-Host "Failed to push source code to main branch." -ForegroundColor Red
-                        Write-Host "Please check the error message above." -ForegroundColor Yellow
+                        Write-Host "Consider pushing manually after resolving conflicts." -ForegroundColor Yellow
                     }
                 } catch {
-                    Write-Host "Error pushing to remote: $_" -ForegroundColor Red
+                    Write-Host "Error during Git operations: $_" -ForegroundColor Red
                 }
                 
                 # Reset remote URL to not include token
