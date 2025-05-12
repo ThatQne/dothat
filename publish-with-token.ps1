@@ -523,14 +523,34 @@ function Push-SourceCode {
             git remote add origin "https://github.com/ThatQne/todo.git"
         }
         
+        # Configure Git to handle line endings
+        git config --global core.autocrlf true
+        
         # Add all files
         git add .
         
-        # Commit changes
-        git commit -m $commitMessage
+        # Check if this is the first commit
+        $hasCommits = $null
+        try {
+            $hasCommits = git rev-parse HEAD
+        } catch {
+            $hasCommits = $null
+        }
         
-        # Push to main branch
-        git push origin main
+        if (-not $hasCommits) {
+            Write-Host "Making initial commit..." -ForegroundColor Yellow
+            git commit -m "Initial commit"
+            
+            # Create and switch to main branch
+            git branch -M main
+            
+            # Set upstream and push
+            git push -u origin main
+        } else {
+            # Regular commit and push
+            git commit -m $commitMessage
+            git push origin main
+        }
         
         Write-Host "Source code pushed successfully!" -ForegroundColor Green
         return $true
