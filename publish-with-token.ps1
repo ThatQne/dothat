@@ -684,6 +684,15 @@ function Run-Publish {
             }
             
             if ($willPushSourceCode) {
+                # Check if directory is a git repository
+                $isGitRepo = Test-Path -Path "$scriptDir\.git" -PathType Container
+                
+                if (-not $isGitRepo) {
+                    Write-Host "This directory is not a git repository. Initializing..." -ForegroundColor Yellow
+                    git init
+                    Write-Host "Git repository initialized" -ForegroundColor Green
+                }
+                
                 # Check git status
                 Write-Host "Checking repository status..." -ForegroundColor Cyan
                 git status
@@ -691,6 +700,21 @@ function Run-Publish {
                 # Get current branch
                 $currentBranch = git branch --show-current
                 Write-Host "Current branch: $currentBranch" -ForegroundColor Cyan
+                
+                # Check if remote 'origin' exists
+                $remoteExists = git remote | Where-Object { $_ -eq "origin" }
+                
+                if (-not $remoteExists) {
+                    Write-Host "Remote 'origin' does not exist. Setting it up..." -ForegroundColor Yellow
+                    
+                    # Build the repository URL
+                    $repoGitUrl = "https://github.com/$owner/$repo.git"
+                    
+                    # Add the origin remote
+                    git remote add origin $repoGitUrl
+                    
+                    Write-Host "Remote 'origin' added: $repoGitUrl" -ForegroundColor Green
+                }
                 
                 # Prompt for commit message
                 Write-Host ""
@@ -733,12 +757,22 @@ function Run-Publish {
                 
                 # Push changes to remote
                 Write-Host "Pushing changes to main branch..." -ForegroundColor Cyan
-                git push origin main
+                try {
+                    git push -u origin main
+                    $pushSuccess = $?
+                    
+                    if ($pushSuccess) {
+                        Write-Host "Source code pushed to main branch successfully!" -ForegroundColor Green
+                    } else {
+                        Write-Host "Failed to push source code to main branch." -ForegroundColor Red
+                        Write-Host "Please check the error message above." -ForegroundColor Yellow
+                    }
+                } catch {
+                    Write-Host "Error pushing to remote: $_" -ForegroundColor Red
+                }
                 
                 # Reset remote URL to not include token
                 git remote set-url origin "https://github.com/$owner/$repo.git"
-                
-                Write-Host "Source code pushed to main branch successfully!" -ForegroundColor Green
                 
                 # Switch back to original branch if different
                 if ($currentBranch -ne "main" -and $currentBranch -ne "") {
