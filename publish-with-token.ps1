@@ -508,6 +508,7 @@ function Push-SourceCode {
         $gitInstalled = $null
         try {
             $gitInstalled = git --version
+            Write-Host "Git version: $gitInstalled" -ForegroundColor Green
         } catch {
             Write-Host "Git is not installed or not in PATH. Please install Git to push source code." -ForegroundColor Red
             return $false
@@ -517,39 +518,64 @@ function Push-SourceCode {
         $isGitRepo = $null
         try {
             $isGitRepo = git rev-parse --is-inside-work-tree
+            Write-Host "Already in a git repository" -ForegroundColor Green
         } catch {
             Write-Host "Not in a git repository. Initializing..." -ForegroundColor Yellow
             git init
-            git remote add origin "https://github.com/ThatQne/todo.git"
+            Write-Host "Git repository initialized" -ForegroundColor Green
+            
+            # Add remote if it doesn't exist
+            $remotes = git remote
+            if (-not ($remotes -contains "origin")) {
+                Write-Host "Adding remote origin..." -ForegroundColor Yellow
+                git remote add origin "https://github.com/ThatQne/todo.git"
+                Write-Host "Remote origin added" -ForegroundColor Green
+            }
         }
         
         # Configure Git to handle line endings
+        Write-Host "Configuring Git line endings..." -ForegroundColor Yellow
         git config --global core.autocrlf true
+        Write-Host "Git line endings configured" -ForegroundColor Green
         
         # Add all files
+        Write-Host "Adding files to Git..." -ForegroundColor Yellow
         git add .
+        Write-Host "Files added to Git" -ForegroundColor Green
         
         # Check if this is the first commit
         $hasCommits = $null
         try {
             $hasCommits = git rev-parse HEAD
+            Write-Host "Found existing commits" -ForegroundColor Green
         } catch {
+            Write-Host "No existing commits found" -ForegroundColor Yellow
             $hasCommits = $null
         }
         
         if (-not $hasCommits) {
             Write-Host "Making initial commit..." -ForegroundColor Yellow
             git commit -m "Initial commit"
+            Write-Host "Initial commit created" -ForegroundColor Green
             
             # Create and switch to main branch
+            Write-Host "Creating main branch..." -ForegroundColor Yellow
             git branch -M main
+            Write-Host "Main branch created" -ForegroundColor Green
             
             # Set upstream and push
-            git push -u origin main
+            Write-Host "Pushing to remote..." -ForegroundColor Yellow
+            git push -u origin main --force
+            Write-Host "Initial push completed" -ForegroundColor Green
         } else {
             # Regular commit and push
+            Write-Host "Making commit for version $version..." -ForegroundColor Yellow
             git commit -m $commitMessage
+            Write-Host "Commit created" -ForegroundColor Green
+            
+            Write-Host "Pushing to remote..." -ForegroundColor Yellow
             git push origin main
+            Write-Host "Push completed" -ForegroundColor Green
         }
         
         Write-Host "Source code pushed successfully!" -ForegroundColor Green
@@ -557,6 +583,7 @@ function Push-SourceCode {
     }
     catch {
         Write-Host "Error pushing source code: $_" -ForegroundColor Red
+        Write-Host "Stack trace: $($_.ScriptStackTrace)" -ForegroundColor Red
         return $false
     }
 }
