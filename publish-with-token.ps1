@@ -495,99 +495,6 @@ function Test-GitHubAccess {
     Read-Host "Press Enter to return to the main menu"
 }
 
-function Push-SourceCode {
-    param (
-        [string]$version,
-        [string]$commitMessage
-    )
-    
-    Write-Host "Pushing source code to GitHub..." -ForegroundColor Cyan
-    
-    try {
-        # Check if git is installed
-        $gitInstalled = $null
-        try {
-            $gitInstalled = git --version
-            Write-Host "Git version: $gitInstalled" -ForegroundColor Green
-        } catch {
-            Write-Host "Git is not installed or not in PATH. Please install Git to push source code." -ForegroundColor Red
-            return $false
-        }
-        
-        # Check if we're in a git repository
-        $isGitRepo = $null
-        try {
-            $isGitRepo = git rev-parse --is-inside-work-tree
-            Write-Host "Already in a git repository" -ForegroundColor Green
-        } catch {
-            Write-Host "Not in a git repository. Initializing..." -ForegroundColor Yellow
-            git init
-            Write-Host "Git repository initialized" -ForegroundColor Green
-            
-            # Add remote if it doesn't exist
-            $remotes = git remote
-            if (-not ($remotes -contains "origin")) {
-                Write-Host "Adding remote origin..." -ForegroundColor Yellow
-                git remote add origin "https://github.com/ThatQne/todo.git"
-                Write-Host "Remote origin added" -ForegroundColor Green
-            }
-        }
-        
-        # Configure Git to handle line endings
-        Write-Host "Configuring Git line endings..." -ForegroundColor Yellow
-        git config --global core.autocrlf true
-        Write-Host "Git line endings configured" -ForegroundColor Green
-        
-        # Add all files
-        Write-Host "Adding files to Git..." -ForegroundColor Yellow
-        git add .
-        Write-Host "Files added to Git" -ForegroundColor Green
-        
-        # Check if this is the first commit
-        $hasCommits = $null
-        try {
-            $hasCommits = git rev-parse HEAD
-            Write-Host "Found existing commits" -ForegroundColor Green
-        } catch {
-            Write-Host "No existing commits found" -ForegroundColor Yellow
-            $hasCommits = $null
-        }
-        
-        if (-not $hasCommits) {
-            Write-Host "Making initial commit..." -ForegroundColor Yellow
-            git commit -m "Initial commit"
-            Write-Host "Initial commit created" -ForegroundColor Green
-            
-            # Create and switch to main branch
-            Write-Host "Creating main branch..." -ForegroundColor Yellow
-            git branch -M main
-            Write-Host "Main branch created" -ForegroundColor Green
-            
-            # Set upstream and push
-            Write-Host "Pushing to remote..." -ForegroundColor Yellow
-            git push -u origin main --force
-            Write-Host "Initial push completed" -ForegroundColor Green
-        } else {
-            # Regular commit and push
-            Write-Host "Making commit for version $version..." -ForegroundColor Yellow
-            git commit -m $commitMessage
-            Write-Host "Commit created" -ForegroundColor Green
-            
-            Write-Host "Pushing to remote..." -ForegroundColor Yellow
-            git push origin main
-            Write-Host "Push completed" -ForegroundColor Green
-        }
-        
-        Write-Host "Source code pushed successfully!" -ForegroundColor Green
-        return $true
-    }
-    catch {
-        Write-Host "Error pushing source code: $_" -ForegroundColor Red
-        Write-Host "Stack trace: $($_.ScriptStackTrace)" -ForegroundColor Red
-        return $false
-    }
-}
-
 function Run-Publish {
     Clear-Host
     Write-Host "=================================================" -ForegroundColor Cyan
@@ -734,6 +641,23 @@ function Run-Publish {
         Write-Host "Using current session token: $maskedToken" -ForegroundColor Green
     }
     
+    # Extract repository information from package.json
+    $repoUrl = $packageJson.repository.url
+    if ($repoUrl -match "github\.com\/([^\/]+)\/([^\/\.]+)") {
+        $owner = $Matches[1]
+        $repo = $Matches[2]
+        Write-Host "Repository: $owner/$repo" -ForegroundColor Cyan
+    } else {
+        Write-Host "Warning: Could not parse repository URL from package.json" -ForegroundColor Yellow
+        Write-Host "Will continue with publish but source code upload might fail" -ForegroundColor Yellow
+    }
+    
+    Write-Host ""
+    Write-Host "Would you like to also push the source code to the main branch?" -ForegroundColor Cyan
+    $pushSourceCode = Read-Host "Enter Y to push source code, any other key to skip"
+    
+    $willPushSourceCode = $pushSourceCode -eq "Y" -or $pushSourceCode -eq "y"
+    
     Write-Host ""
     Write-Host "Starting publish process for version $(if ($newVersion) { $newVersion } else { $currentVersion })..." -ForegroundColor Cyan
     Write-Host "This may take several minutes." -ForegroundColor Yellow
@@ -746,13 +670,82 @@ function Run-Publish {
         # Run clean first to ensure we don't use cached files with old version
         npm run clean
         
-        # Push source code first
-        $finalVersion = if ($newVersion) { $newVersion } else { $currentVersion }
-        $commitMessage = "Release v$finalVersion"
-        $sourcePushed = Push-SourceCode -version $finalVersion -commitMessage $commitMessage
-        
-        if (-not $sourcePushed) {
-            Write-Host "Warning: Failed to push source code. Continuing with release..." -ForegroundColor Yellow
+        # If source code should be pushed, commit changes first
+        if ($willPushSourceCode) {
+            Write-Host "Preparing to push source code to main branch..." -ForegroundColor Cyan
+            
+            # Check if we have Git installed
+            try {
+                $gitVersion = git --version
+                Write-Host "Git detected: $gitVersion" -ForegroundColor Green
+            } catch {
+                Write-Host "Git not found. Cannot push source code." -ForegroundColor Red
+                $willPushSourceCode = $false
+            }
+            
+            if ($willPushSourceCode) {
+                # Check git status
+                Write-Host "Checking repository status..." -ForegroundColor Cyan
+                git status
+                
+                # Get current branch
+                $currentBranch = git branch --show-current
+                Write-Host "Current branch: $currentBranch" -ForegroundColor Cyan
+                
+                # Prompt for commit message
+                Write-Host ""
+                Write-Host "Enter commit message for the code changes:" -ForegroundColor Cyan
+                $commitMessage = Read-Host "Commit message"
+                
+                if (-not $commitMessage) {
+                    $commitMessage = "Update app to version $(if ($newVersion) { $newVersion } else { $currentVersion })"
+                }
+                
+                # Stage all files
+                Write-Host "Staging files..." -ForegroundColor Cyan
+                git add .
+                
+                # Commit changes
+                Write-Host "Committing changes..." -ForegroundColor Cyan
+                git commit -m "$commitMessage"
+                
+                # If not on main branch, create and switch to it
+                if ($currentBranch -ne "main") {
+                    # Check if main branch exists
+                    $mainExists = git branch --list main
+                    
+                    if ($mainExists) {
+                        Write-Host "Switching to main branch..." -ForegroundColor Cyan
+                        git checkout main
+                        
+                        # Merge changes from current branch
+                        Write-Host "Merging changes from $currentBranch into main..." -ForegroundColor Cyan
+                        git merge $currentBranch
+                    } else {
+                        Write-Host "Creating and switching to main branch..." -ForegroundColor Cyan
+                        git checkout -b main
+                    }
+                }
+                
+                # Set up the remote with token
+                $repoUrlWithToken = "https://$env:GITHUB_TOKEN@github.com/$owner/$repo.git"
+                git remote set-url origin $repoUrlWithToken
+                
+                # Push changes to remote
+                Write-Host "Pushing changes to main branch..." -ForegroundColor Cyan
+                git push origin main
+                
+                # Reset remote URL to not include token
+                git remote set-url origin "https://github.com/$owner/$repo.git"
+                
+                Write-Host "Source code pushed to main branch successfully!" -ForegroundColor Green
+                
+                # Switch back to original branch if different
+                if ($currentBranch -ne "main" -and $currentBranch -ne "") {
+                    Write-Host "Switching back to $currentBranch branch..." -ForegroundColor Cyan
+                    git checkout $currentBranch
+                }
+            }
         }
         
         # If the UseMakeCmd parameter is provided, use it instead of the default publish command
