@@ -871,6 +871,122 @@ function Run-Publish {
     Read-Host "Press Enter to return to the main menu"
 }
 
+<<<<<<< Updated upstream
+=======
+function Update-SourceCode {
+    Clear-Host
+    Write-Host "=================================================" -ForegroundColor Cyan
+    Write-Host "|              UPDATE SOURCE CODE               |" -ForegroundColor Cyan
+    Write-Host "=================================================" -ForegroundColor Cyan
+    Write-Host ""
+    
+    try {
+        Write-Host "Updating source code from GitHub..." -ForegroundColor Yellow
+        
+        # Change to the script directory
+        Set-Location $scriptDir
+        
+        # Check if there are any local changes
+        $hasChanges = git status --porcelain
+        if ($hasChanges) {
+            Write-Host "Found local changes. Stashing them temporarily..." -ForegroundColor Yellow
+            git stash save "Temporary stash before updating from main"
+        }
+        
+        # Fetch latest changes
+        Write-Host "Fetching latest changes..." -ForegroundColor Yellow
+        git fetch origin
+        
+        # Get current branch
+        $currentBranch = git rev-parse --abbrev-ref HEAD
+        
+        # Switch to main branch
+        Write-Host "Switching to main branch..." -ForegroundColor Yellow
+        git checkout main
+        
+        # Reset main branch to match origin/main
+        Write-Host "Resetting main branch to match origin/main..." -ForegroundColor Yellow
+        git reset --hard origin/main
+        
+        # If we weren't on main branch, switch back and merge
+        if ($currentBranch -ne "main") {
+            Write-Host "Switching back to $currentBranch branch..." -ForegroundColor Yellow
+            git checkout $currentBranch
+            
+            # Merge changes from main
+            Write-Host "Merging changes from main..." -ForegroundColor Yellow
+            git merge main
+        }
+        
+        # If we stashed changes, try to apply them back
+        if ($hasChanges) {
+            Write-Host "Applying stashed changes back..." -ForegroundColor Yellow
+            git stash pop
+            
+            # Check if there are any changes after applying stash
+            $remainingChanges = git status --porcelain
+            if ($remainingChanges) {
+                Write-Host ""
+                Write-Host "Found changes after update. Would you like to commit them?" -ForegroundColor Yellow
+                $commitChanges = Read-Host "Enter Y to commit changes, any other key to leave them uncommitted"
+                
+                if ($commitChanges -eq "Y" -or $commitChanges -eq "y") {
+                    Write-Host "Committing changes..." -ForegroundColor Yellow
+                    git add .
+                    $commitMessage = Read-Host "Enter commit message (or press Enter for default message)"
+                    if (-not $commitMessage) {
+                        $commitMessage = "Update local changes after pulling from main"
+                    }
+                    git commit -m "$commitMessage"
+                    Write-Host "Changes committed successfully!" -ForegroundColor Green
+                    
+                    # Ask if user wants to push changes to GitHub
+                    Write-Host ""
+                    Write-Host "Would you like to push these changes to GitHub?" -ForegroundColor Yellow
+                    $pushChanges = Read-Host "Enter Y to push changes, any other key to leave them local"
+                    
+                    if ($pushChanges -eq "Y" -or $pushChanges -eq "y") {
+                        Write-Host "Pushing changes to GitHub..." -ForegroundColor Yellow
+                        git push origin main
+                        Write-Host "Changes pushed to GitHub successfully!" -ForegroundColor Green
+                    }
+                }
+            }
+        }
+        
+        # Install/update dependencies with legacy peer deps
+        Write-Host "Updating dependencies..." -ForegroundColor Yellow
+        npm install --legacy-peer-deps
+        
+        Write-Host ""
+        Write-Host "Source code updated successfully!" -ForegroundColor Green
+    }
+    catch {
+        Write-Host ""
+        Write-Host "Error updating source code:" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Red
+        
+        # If there was an error and we stashed changes, try to recover them
+        if ($hasChanges) {
+            Write-Host ""
+            Write-Host "Attempting to recover stashed changes..." -ForegroundColor Yellow
+            try {
+                git stash pop
+                Write-Host "Recovered stashed changes successfully!" -ForegroundColor Green
+            }
+            catch {
+                Write-Host "Failed to recover stashed changes:" -ForegroundColor Red
+                Write-Host $_.Exception.Message -ForegroundColor Red
+                Write-Host "You can recover your changes using 'git stash list' and 'git stash apply'" -ForegroundColor Yellow
+            }
+        }
+    }
+    
+    Write-Host ""
+    Read-Host "Press Enter to return to the main menu"
+}
+
+>>>>>>> Stashed changes
 # Main menu loop
 $running = $true
 while ($running) {
