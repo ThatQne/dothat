@@ -7,7 +7,13 @@ on:
     paths:
       - 'docs/**'
       - '.github/workflows/deploy-website.yml'
-  workflow_dispatch:  # Allows manual triggering
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force deployment even if no changes'
+        required: false
+        type: boolean
+        default: false
 
 # Add permissions block
 permissions:
