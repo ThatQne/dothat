@@ -654,12 +654,6 @@ function Run-Publish {
     }
     
     Write-Host ""
-    Write-Host "Would you like to also push the source code to the main branch?" -ForegroundColor Cyan
-    $pushSourceCode = Read-Host "Enter Y to push source code, any other key to skip"
-    
-    $willPushSourceCode = $pushSourceCode -eq "Y" -or $pushSourceCode -eq "y"
-    
-    Write-Host ""
     Write-Host "Starting publish process for version $(if ($newVersion) { $newVersion } else { $currentVersion })..." -ForegroundColor Cyan
     Write-Host "This may take several minutes." -ForegroundColor Yellow
     Write-Host ""
@@ -670,168 +664,6 @@ function Run-Publish {
     try {
         # Run clean first to ensure we don't use cached files with old version
         npm run clean
-        
-        # If source code should be pushed, commit changes first
-        if ($willPushSourceCode) {
-            Write-Host "Preparing to push source code to main branch..." -ForegroundColor Cyan
-            
-            # Check if we have Git installed
-            try {
-                $gitVersion = git --version
-                Write-Host "Git detected: $gitVersion" -ForegroundColor Green
-            } catch {
-                Write-Host "Git not found. Cannot push source code." -ForegroundColor Red
-                $willPushSourceCode = $false
-            }
-            
-            if ($willPushSourceCode) {
-                # Check if directory is a git repository
-                $isGitRepo = Test-Path -Path "$scriptDir\.git" -PathType Container
-                
-                if (-not $isGitRepo) {
-                    Write-Host "This directory is not a git repository. Initializing..." -ForegroundColor Yellow
-                    git init
-                    Write-Host "Git repository initialized" -ForegroundColor Green
-                }
-                
-                # Check git status
-                Write-Host "Checking repository status..." -ForegroundColor Cyan
-                git status
-                
-                # Get current branch
-                $currentBranch = git branch --show-current
-                Write-Host "Current branch: $currentBranch" -ForegroundColor Cyan
-                
-                # Check if remote 'origin' exists
-                $remoteExists = git remote | Where-Object { $_ -eq "origin" }
-                
-                if (-not $remoteExists) {
-                    Write-Host "Remote 'origin' does not exist. Setting it up..." -ForegroundColor Yellow
-                    
-                    # Build the repository URL
-                    $repoGitUrl = "https://github.com/$owner/$repo.git"
-                    
-                    # Add the origin remote
-                    git remote add origin $repoGitUrl
-                    
-                    Write-Host "Remote 'origin' added: $repoGitUrl" -ForegroundColor Green
-                }
-                
-                # Prompt for commit message
-                Write-Host ""
-                Write-Host "Enter commit message for the code changes:" -ForegroundColor Cyan
-                $commitMessage = Read-Host "Commit message"
-                
-                if (-not $commitMessage) {
-                    $commitMessage = "Update app to version $(if ($newVersion) { $newVersion } else { $currentVersion })"
-                }
-                
-                # Stage all files
-                Write-Host "Staging files..." -ForegroundColor Cyan
-                git add .
-                
-                # Commit changes
-                Write-Host "Committing changes..." -ForegroundColor Cyan
-                git commit -m "$commitMessage"
-                
-                # If not on main branch, create and switch to it
-                if ($currentBranch -ne "main") {
-                    # Check if main branch exists
-                    $mainExists = git branch --list main
-                    
-                    if ($mainExists) {
-                        Write-Host "Switching to main branch..." -ForegroundColor Cyan
-                        git checkout main
-                        
-                        # Merge changes from current branch
-                        Write-Host "Merging changes from $currentBranch into main..." -ForegroundColor Cyan
-                        git merge $currentBranch
-                    } else {
-                        Write-Host "Creating and switching to main branch..." -ForegroundColor Cyan
-                        git checkout -b main
-                    }
-                }
-                
-                # Set up the remote with token
-                $repoUrlWithToken = "https://$env:GITHUB_TOKEN@github.com/$owner/$repo.git"
-                git remote set-url origin $repoUrlWithToken
-                
-                # Fetch the latest changes from remote
-                Write-Host "Fetching latest changes from remote repository..." -ForegroundColor Cyan
-                git fetch origin
-                
-                # Push changes to remote with different strategies if simple push fails
-                Write-Host "Pushing changes to main branch..." -ForegroundColor Cyan
-                try {
-                    # First attempt: simple push
-                    git push -u origin main
-                    $pushSuccess = $?
-                    
-                    # If push failed, try pull then push
-                    if (-not $pushSuccess) {
-                        Write-Host "Initial push failed. Trying to integrate remote changes..." -ForegroundColor Yellow
-                        
-                        # Try to pull with rebase first (keeps commits cleaner)
-                        Write-Host "Attempting git pull with rebase strategy..." -ForegroundColor Cyan
-                        git pull --rebase origin main
-                        $pullSuccess = $?
-                        
-                        if (-not $pullSuccess) {
-                            # If rebase fails, try regular merge
-                            Write-Host "Rebase strategy failed. Trying regular merge..." -ForegroundColor Yellow
-                            git pull origin main
-                            $pullSuccess = $?
-                            
-                            if (-not $pullSuccess) {
-                                Write-Host "Could not integrate remote changes automatically." -ForegroundColor Red
-                                Write-Host "Remote repository history differs significantly from local." -ForegroundColor Red
-                                
-                                # Ask user if they want to force push (potentially dangerous)
-                                Write-Host ""
-                                Write-Host "CAUTION: You can force push your changes, but this may OVERWRITE" -ForegroundColor Red
-                                Write-Host "remote work that's not in your local repository." -ForegroundColor Red
-                                $forcePush = Read-Host "Force push? (y/N)"
-                                
-                                if ($forcePush -eq "y" -or $forcePush -eq "Y") {
-                                    Write-Host "Force pushing to main branch..." -ForegroundColor Yellow
-                                    git push -f origin main
-                                    $pushSuccess = $?
-                                } else {
-                                    Write-Host "Force push cancelled." -ForegroundColor Yellow
-                                    $pushSuccess = $false
-                                }
-                            } else {
-                                # Try pushing again after successful merge
-                                git push origin main
-                                $pushSuccess = $?
-                            }
-                        } else {
-                            # Try pushing again after successful rebase
-                            git push origin main
-                            $pushSuccess = $?
-                        }
-                    }
-                    
-                    if ($pushSuccess) {
-                        Write-Host "Source code pushed to main branch successfully!" -ForegroundColor Green
-                    } else {
-                        Write-Host "Failed to push source code to main branch." -ForegroundColor Red
-                        Write-Host "Consider pushing manually after resolving conflicts." -ForegroundColor Yellow
-                    }
-                } catch {
-                    Write-Host "Error during Git operations: $_" -ForegroundColor Red
-                }
-                
-                # Reset remote URL to not include token
-                git remote set-url origin "https://github.com/$owner/$repo.git"
-                
-                # Switch back to original branch if different
-                if ($currentBranch -ne "main" -and $currentBranch -ne "") {
-                    Write-Host "Switching back to $currentBranch branch..." -ForegroundColor Cyan
-                    git checkout $currentBranch
-                }
-            }
-        }
         
         # If the UseMakeCmd parameter is provided, use it instead of the default publish command
         if ($UseMakeCmd) {
@@ -954,6 +786,18 @@ function Update-SourceCode {
             Write-Host "Applying stashed changes..." -ForegroundColor Yellow
             git stash pop
         }
+        
+        # Add all changes
+        Write-Host "Adding all changes..." -ForegroundColor Yellow
+        git add .
+        
+        # Commit changes
+        Write-Host "Committing changes..." -ForegroundColor Yellow
+        git commit -m "Update source code"
+        
+        # Push changes
+        Write-Host "Pushing changes to main branch..." -ForegroundColor Yellow
+        git push origin main
         
         Write-Host ""
         Write-Host "Source code updated successfully!" -ForegroundColor Green
