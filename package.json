@@ -3,7 +3,8 @@
   "productName": "DoThat",
   "version": "1.0.5",
   "description": "A beautiful app to plan and organize your exams and tasks",
-  "main": ".webpack/main",
+  "main": ".webpack/x64/main/index.js",
+  "homepage": " ",
   "scripts": {
     "start": "rimraf .webpack && cross-env NODE_ENV=development ELECTRON_ENABLE_LOGGING=1 FORCE_COLOR=1 FORCE_HMR=true electron-forge start",
     "package": "cross-env NODE_ENV=production electron-forge package",

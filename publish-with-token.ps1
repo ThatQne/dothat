@@ -72,10 +72,11 @@ function Show-MainMenu {
     Write-Host " 4. Export token to .env file" -ForegroundColor Cyan
     Write-Host " 5. Test GitHub access" -ForegroundColor Cyan
     Write-Host " 6. Run publish" -ForegroundColor Green
-    Write-Host " 7. Exit" -ForegroundColor Red
+    Write-Host " 7. Update source code" -ForegroundColor Yellow
+    Write-Host " 8. Exit" -ForegroundColor Red
     Write-Host ""
     Write-Host "=================================================" -ForegroundColor Cyan
-    $choice = Read-Host "  Enter your choice (1-7)"
+    $choice = Read-Host "  Enter your choice (1-8)"
     return $choice
 }
 
@@ -871,122 +872,103 @@ function Run-Publish {
     Read-Host "Press Enter to return to the main menu"
 }
 
-<<<<<<< Updated upstream
-=======
 function Update-SourceCode {
     Clear-Host
     Write-Host "=================================================" -ForegroundColor Cyan
     Write-Host "|              UPDATE SOURCE CODE               |" -ForegroundColor Cyan
     Write-Host "=================================================" -ForegroundColor Cyan
     Write-Host ""
+    Write-Host "DEBUG: scriptDir is $scriptDir" -ForegroundColor Magenta
+    Write-Host "This will update your local code from the main branch." -ForegroundColor Yellow
+    Write-Host "Any local changes will be stashed before updating." -ForegroundColor Yellow
+    Write-Host ""
+    
+    $confirm = Read-Host "Do you want to proceed? (y/n)"
+    if ($confirm -ne "y") {
+        Write-Host ""
+        Write-Host "Operation cancelled." -ForegroundColor Red
+        Write-Host ""
+        Read-Host "Press Enter to return to the main menu"
+        return
+    }
     
     try {
-        Write-Host "Updating source code from GitHub..." -ForegroundColor Yellow
+        Push-Location -Path $scriptDir
+        # Check if we're in a git repository
+        $isGitRepo = Test-Path -Path "$scriptDir\.git" -PathType Container
         
-        # Change to the script directory
-        Set-Location $scriptDir
-        
-        # Check if there are any local changes
-        $hasChanges = git status --porcelain
-        if ($hasChanges) {
-            Write-Host "Found local changes. Stashing them temporarily..." -ForegroundColor Yellow
-            git stash save "Temporary stash before updating from main"
-        }
-        
-        # Fetch latest changes
-        Write-Host "Fetching latest changes..." -ForegroundColor Yellow
-        git fetch origin
-        
-        # Get current branch
-        $currentBranch = git rev-parse --abbrev-ref HEAD
-        
-        # Switch to main branch
-        Write-Host "Switching to main branch..." -ForegroundColor Yellow
-        git checkout main
-        
-        # Reset main branch to match origin/main
-        Write-Host "Resetting main branch to match origin/main..." -ForegroundColor Yellow
-        git reset --hard origin/main
-        
-        # If we weren't on main branch, switch back and merge
-        if ($currentBranch -ne "main") {
-            Write-Host "Switching back to $currentBranch branch..." -ForegroundColor Yellow
-            git checkout $currentBranch
+        if (-not $isGitRepo) {
+            Write-Host "This directory is not a git repository." -ForegroundColor Red
+            Write-Host "Would you like to initialize it as a git repository?" -ForegroundColor Yellow
+            $initGit = Read-Host "Enter Y to initialize git repository, any other key to cancel"
             
-            # Merge changes from main
-            Write-Host "Merging changes from main..." -ForegroundColor Yellow
-            git merge main
-        }
-        
-        # If we stashed changes, try to apply them back
-        if ($hasChanges) {
-            Write-Host "Applying stashed changes back..." -ForegroundColor Yellow
-            git stash pop
-            
-            # Check if there are any changes after applying stash
-            $remainingChanges = git status --porcelain
-            if ($remainingChanges) {
+            if ($initGit -ne "Y" -and $initGit -ne "y") {
                 Write-Host ""
-                Write-Host "Found changes after update. Would you like to commit them?" -ForegroundColor Yellow
-                $commitChanges = Read-Host "Enter Y to commit changes, any other key to leave them uncommitted"
-                
-                if ($commitChanges -eq "Y" -or $commitChanges -eq "y") {
-                    Write-Host "Committing changes..." -ForegroundColor Yellow
-                    git add .
-                    $commitMessage = Read-Host "Enter commit message (or press Enter for default message)"
-                    if (-not $commitMessage) {
-                        $commitMessage = "Update local changes after pulling from main"
-                    }
-                    git commit -m "$commitMessage"
-                    Write-Host "Changes committed successfully!" -ForegroundColor Green
-                    
-                    # Ask if user wants to push changes to GitHub
-                    Write-Host ""
-                    Write-Host "Would you like to push these changes to GitHub?" -ForegroundColor Yellow
-                    $pushChanges = Read-Host "Enter Y to push changes, any other key to leave them local"
-                    
-                    if ($pushChanges -eq "Y" -or $pushChanges -eq "y") {
-                        Write-Host "Pushing changes to GitHub..." -ForegroundColor Yellow
-                        git push origin main
-                        Write-Host "Changes pushed to GitHub successfully!" -ForegroundColor Green
-                    }
+                Write-Host "Operation cancelled." -ForegroundColor Red
+                Write-Host ""
+                Read-Host "Press Enter to return to the main menu"
+                Pop-Location
+                return
+            }
+            
+            # Initialize git repository
+            Write-Host "Initializing git repository..." -ForegroundColor Yellow
+            git init
+            
+            # Get repository URL from package.json
+            $packageJsonPath = "$scriptDir\package.json"
+            if (Test-Path $packageJsonPath) {
+                $packageJson = Get-Content $packageJsonPath -Raw | ConvertFrom-Json
+                if ($packageJson.repository -and $packageJson.repository.url) {
+                    $repoUrl = $packageJson.repository.url
+                    Write-Host "Adding remote origin: $repoUrl" -ForegroundColor Yellow
+                    git remote add origin $repoUrl
                 }
             }
         }
         
-        # Install/update dependencies with legacy peer deps
-        Write-Host "Updating dependencies..." -ForegroundColor Yellow
-        npm install --legacy-peer-deps
+        # Check if we have any changes to stash
+        $hasChanges = git status --porcelain
+        if ($hasChanges) {
+            Write-Host "Stashing local changes..." -ForegroundColor Yellow
+            git stash
+        }
+        
+        # Check if we have a remote
+        $hasRemote = git remote | Where-Object { $_ -eq "origin" }
+        if (-not $hasRemote) {
+            Write-Host "No remote repository configured." -ForegroundColor Red
+            Write-Host "Please configure a remote repository first." -ForegroundColor Yellow
+            Write-Host ""
+            Read-Host "Press Enter to return to the main menu"
+            Pop-Location
+            return
+        }
+        
+        # Pull latest changes from main branch
+        Write-Host "Pulling latest changes from main branch..." -ForegroundColor Yellow
+        git pull origin main
+        
+        # Apply stashed changes if any
+        if ($hasChanges) {
+            Write-Host "Applying stashed changes..." -ForegroundColor Yellow
+            git stash pop
+        }
         
         Write-Host ""
         Write-Host "Source code updated successfully!" -ForegroundColor Green
+        Pop-Location
     }
     catch {
         Write-Host ""
-        Write-Host "Error updating source code:" -ForegroundColor Red
-        Write-Host $_.Exception.Message -ForegroundColor Red
-        
-        # If there was an error and we stashed changes, try to recover them
-        if ($hasChanges) {
-            Write-Host ""
-            Write-Host "Attempting to recover stashed changes..." -ForegroundColor Yellow
-            try {
-                git stash pop
-                Write-Host "Recovered stashed changes successfully!" -ForegroundColor Green
-            }
-            catch {
-                Write-Host "Failed to recover stashed changes:" -ForegroundColor Red
-                Write-Host $_.Exception.Message -ForegroundColor Red
-                Write-Host "You can recover your changes using 'git stash list' and 'git stash apply'" -ForegroundColor Yellow
-            }
-        }
+        Write-Host "Error updating source code: $_" -ForegroundColor Red
+        Write-Host "Please make sure you have git installed and configured properly." -ForegroundColor Yellow
     }
     
     Write-Host ""
     Read-Host "Press Enter to return to the main menu"
 }
 
->>>>>>> Stashed changes
 # Main menu loop
 $running = $true
 while ($running) {
@@ -999,7 +981,8 @@ while ($running) {
         "4" { Export-TokenToEnvFile }
         "5" { Test-GitHubAccess }
         "6" { Run-Publish }
-        "7" { $running = $false }
+        "7" { Update-SourceCode }
+        "8" { $running = $false }
         default { 
             Write-Host ""
             Write-Host "Invalid choice. Please try again." -ForegroundColor Red
