@@ -11,6 +11,8 @@ on:
 # Add permissions block
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   deploy:
@@ -19,10 +21,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          ref: main
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -39,4 +39,4 @@ jobs:
           folder: docs
           branch: gh-pages
           clean: true
-          repository-name: ThatQne/dothat 
+          token: ${{ secrets.GITHUB_TOKEN }} 
