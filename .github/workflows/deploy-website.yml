@@ -8,11 +8,17 @@ on:
       - 'docs/**'
       - '.github/workflows/deploy-website.yml'
 
+# Add permissions block
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
