@@ -3,22 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DoThat - Beautiful Exam Planner & Task Manager</title>
+    <title>DoThat - Minimalist Task Management</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <header>
         <nav>
             <div class="logo">
-                <img src="assets/logo.png" alt="DoThat Logo">
+                <i class="fas fa-check-circle"></i>
                 <span>DoThat</span>
             </div>
             <div class="nav-links">
                 <a href="#features">Features</a>
                 <a href="#download">Download</a>
-                <a href="#screenshots">Screenshots</a>
                 <a href="https://github.com/ThatQne/dothat" target="_blank">GitHub</a>
             </div>
         </nav>
@@ -27,47 +26,60 @@
     <main>
         <section class="hero">
             <div class="hero-content">
-                <h1>Plan Your Exams & Tasks Beautifully</h1>
-                <p>A modern desktop application that helps you stay organized and focused on what matters most.</p>
-                <a href="#download" class="cta-button">Download Now</a>
-            </div>
-            <div class="hero-image">
-                <img src="assets/hero-screenshot.png" alt="DoThat App Screenshot">
+                <h1>Minimalist Task Management</h1>
+                <p>Organize your tasks with elegance and simplicity</p>
+                <div class="cta-buttons">
+                    <a href="#download" class="cta-primary">Download Now</a>
+                    <a href="https://github.com/ThatQne/dothat" class="cta-secondary">View on GitHub</a>
+                </div>
             </div>
         </section>
 
         <section id="features" class="features">
             <h2>Features</h2>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <i class="fas fa-tasks"></i>
-                    <h3>Task Management</h3>
-                    <p>Create and manage tasks and subtasks with ease</p>
+            <div class="feature-grid">
+                <div class="feature-card" data-feature="groups">
+                    <div class="feature-icon">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <h3>Smart Groups</h3>
+                    <p>Organize tasks into intuitive groups</p>
+                    <div class="feature-demo">
+                        <div class="demo-group">
+                            <div class="demo-task">Task 1</div>
+                            <div class="demo-task">Task 2</div>
+                            <div class="demo-task">Task 3</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="feature-card">
-                    <i class="fas fa-calendar-alt"></i>
-                    <h3>Due Dates</h3>
-                    <p>Set due dates and times for your tasks</p>
+
+                <div class="feature-card" data-feature="subtasks">
+                    <div class="feature-icon">
+                        <i class="fas fa-list-check"></i>
+                    </div>
+                    <h3>Subtasks</h3>
+                    <p>Break down complex tasks into manageable steps</p>
+                    <div class="feature-demo">
+                        <div class="demo-subtask">
+                            <div class="demo-subtask-item">Subtask 1</div>
+                            <div class="demo-subtask-item">Subtask 2</div>
+                            <div class="demo-subtask-item">Subtask 3</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="feature-card">
-                    <i class="fas fa-arrows-alt"></i>
-                    <h3>Drag & Drop</h3>
-                    <p>Organize tasks with intuitive drag-and-drop</p>
-                </div>
-                <div class="feature-card">
-                    <i class="fas fa-star"></i>
-                    <h3>Priority Tasks</h3>
-                    <p>Mark important tasks with starring</p>
-                </div>
-                <div class="feature-card">
-                    <i class="fas fa-palette"></i>
-                    <h3>Multiple Themes</h3>
-                    <p>Choose from dark, light, Nord, and Purple Dream themes</p>
-                </div>
-                <div class="feature-card">
-                    <i class="fas fa-bell"></i>
-                    <h3>Notifications</h3>
-                    <p>Get notified for upcoming tasks</p>
+
+                <div class="feature-card" data-feature="quick-add">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3>Quick Add</h3>
+                    <p>Type to add tasks with natural time input</p>
+                    <div class="feature-demo">
+                        <div class="demo-input">
+                            <input type="text" placeholder="Type to add task..." readonly>
+                            <div class="demo-suggestion">"Meeting tomorrow at 2pm"</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -77,49 +89,93 @@
             <div class="download-options">
                 <a href="https://github.com/ThatQne/dothat/releases/latest" class="download-button windows">
                     <i class="fab fa-windows"></i>
-                    <span>Download for Windows</span>
+                    <span>Windows</span>
                 </a>
                 <a href="https://github.com/ThatQne/dothat/releases/latest" class="download-button mac">
                     <i class="fab fa-apple"></i>
-                    <span>Download for macOS</span>
+                    <span>macOS</span>
                 </a>
                 <a href="https://github.com/ThatQne/dothat/releases/latest" class="download-button linux">
                     <i class="fab fa-linux"></i>
-                    <span>Download for Linux</span>
+                    <span>Linux</span>
                 </a>
-            </div>
-        </section>
-
-        <section id="screenshots" class="screenshots">
-            <h2>Screenshots</h2>
-            <div class="screenshot-gallery">
-                <img src="screenshots/app-screenshot.png" alt="DoThat App Screenshot">
-                <img src="screenshots/app-screenshot.png" alt="DoThat App Screenshot">
-                <img src="screenshots/app-screenshot.png" alt="DoThat App Screenshot">
             </div>
         </section>
     </main>
 
     <footer>
         <div class="footer-content">
-            <div class="footer-section">
-                <h4>DoThat</h4>
-                <p>A beautiful app to plan and organize your exams and tasks</p>
-            </div>
-            <div class="footer-section">
-                <h4>Links</h4>
+            <div class="footer-links">
                 <a href="https://github.com/ThatQne/dothat">GitHub</a>
                 <a href="https://github.com/ThatQne/dothat/issues">Report Issues</a>
                 <a href="https://github.com/ThatQne/dothat/blob/main/LICENSE">License</a>
             </div>
-            <div class="footer-section">
-                <h4>Credits</h4>
-                <p>Built with Electron and React</p>
+            <div class="footer-credits">
+                <p>Built with <i class="fas fa-heart"></i> using Electron and React</p>
             </div>
         </div>
-        <div class="footer-bottom">
-            <p>&copy; 2024 DoThat. All rights reserved.</p>
-        </div>
     </footer>
+
+    <script>
+        // Animate features on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate');
+                }
+            });
+        }, { threshold: 0.5 });
+
+        document.querySelectorAll('.feature-card').forEach(card => {
+            observer.observe(card);
+        });
+
+        // Demo animations
+        function animateFeature(feature) {
+            const card = document.querySelector(`[data-feature="${feature}"]`);
+            if (!card) return;
+
+            switch(feature) {
+                case 'groups':
+                    const tasks = card.querySelectorAll('.demo-task');
+                    tasks.forEach((task, index) => {
+                        setTimeout(() => {
+                            task.classList.add('animate');
+                        }, index * 200);
+                    });
+                    break;
+                case 'subtasks':
+                    const subtasks = card.querySelectorAll('.demo-subtask-item');
+                    subtasks.forEach((subtask, index) => {
+                        setTimeout(() => {
+                            subtask.classList.add('animate');
+                        }, index * 200);
+                    });
+                    break;
+                case 'quick-add':
+                    const input = card.querySelector('.demo-input input');
+                    const suggestion = card.querySelector('.demo-suggestion');
+                    setTimeout(() => {
+                        input.classList.add('typing');
+                        setTimeout(() => {
+                            suggestion.classList.add('show');
+                        }, 1000);
+                    }, 500);
+                    break;
+            }
+        }
+
+        // Start animations when features are visible
+        document.querySelectorAll('.feature-card').forEach(card => {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        animateFeature(entry.target.dataset.feature);
+                    }
+                });
+            }, { threshold: 0.5 });
+            observer.observe(card);
+        });
+    </script>
 </body>
 </html> 
