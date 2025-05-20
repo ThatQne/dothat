@@ -3,42 +3,41 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 const fs = require('fs');
 const path = require('path');
 
+// Read package.json to get version
+const packageJson = require('./package.json');
+const appVersion = packageJson.version;
+
 // Determine if we're in development mode
 const isDevelopment = process.env.NODE_ENV !== 'production';
-// Force HMR if environment variable is set
-const forceHmr = process.env.FORCE_HMR === 'true';
 
 // Check if icon files exist
 const iconPath = './assets/icons/logo';
 const hasIcoIcon = fs.existsSync(path.resolve(__dirname, iconPath + '.ico'));
-const hasPngIcon = fs.existsSync(path.resolve(__dirname, iconPath + '.png'));
-const hasIcnsIcon = fs.existsSync(path.resolve(__dirname, iconPath + '.icns'));
 
 // Config object
 const config = {
   packagerConfig: {
-    // AutoUnpackNatives plugin requires asar to be true
     asar: true,
     asarUnpack: [
       "**/node_modules/electron-updater/**",
       "**/node_modules/builder-util-runtime/**",
       "**/node_modules/electron-log/**"
     ],
-    // Enhanced ignore patterns to reduce package size
     ignore: [
+      // Development files
       "^\\/\\.vscode",
+      "^\\/\\.git",
+      "^\\/\\.github",
+      "^\\/out",
+      "^\\/\\.env",
+      "^\\/\\.github\\-token\\-helper\\.ps1$",
+      "^\\/\\.publish\\-with\\-token\\.ps1$",
+      
+      // Node modules optimization
       "^\\/node_modules\\/\\.bin",
       "^\\/node_modules\\/electron($|\\/$)",
       "^\\/node_modules\\/electron-builder($|\\/$)",
       "^\\/node_modules\\/\\.cache",
-      "^\\/\\.git($|\\/$)",
-      "\\.map$",
-      "^/\\.github($|/)",
-      "^\\/out($|\\/$)",
-      // Additional patterns to reduce size
-      "^/\\.env($|/)",
-      "^/\\.github\\-token\\-helper\\.ps1$",
-      "^/\\.publish\\-with\\-token\\.ps1$",
       "node_modules/\\@babel($|/)",
       "node_modules/\\.bin($|/)",
       "node_modules/\\.cache($|/)",
@@ -50,28 +49,21 @@ const config = {
       "node_modules/.*/examples($|/)",
       "node_modules/.*\\.md$",
       "node_modules/.*LICENSE.*",
-      "\\.log$",
+      
+      // Source maps and types
+      "\\.map$",
       "\\.d\\.ts$",
       "\\.test\\.js$",
-      "\\.spec\\.js$"
+      "\\.spec\\.js$",
+      "\\.log$"
     ],
-    // Better compression for asar
-    extraResource: [],
-    // Control pruning of dev dependencies
-    prune: false, // Disable pruning completely for faster development
-    // Overwrite existing files
+    prune: true, // Enable pruning in production
     overwrite: true,
-    // Reduce package size
     derefSymlinks: true,
-    // Set the app name
-    appVersion: '1.0.2',
-    // Specify executable name
+    appVersion: appVersion,
     executableName: 'DoThat',
-    // Set app metadata
     appCopyright: `Copyright © ${new Date().getFullYear()} ThatQne`,
-    // Set app icon
     icon: './assets/icons/logo',
-    // OSX specific options
     osxSign: {
       identity: 'Developer ID Application: ThatQne',
       'hardened-runtime': true,
@@ -81,47 +73,29 @@ const config = {
     shortcutName: 'DoThat'
   },
   rebuildConfig: {},
-  // Only include Windows makers to reduce build time and size
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
       config: {
         name: 'DoThat',
         description: 'A beautiful app to plan and organize your exams and tasks',
-        // Enable compression
-        noMsi: true, // Don't create MSI to reduce output files
-        // Add installation options
+        noMsi: true,
         setupExe: 'DoThat-Setup.exe',
-        remoteReleases: 'https://github.com/ThatQne/todo',
+        remoteReleases: 'https://github.com/ThatQne/dothat',
         setupIcon: './assets/icons/logo.ico',
         loadingGif: './assets/installer-loading.gif',
-        // Support loading electron-updater from asar
-        // Add parameters for execution
         allowElevation: true,
-        // Better compression algorithm
         compressionLevel: 9
-      }
-    },
-    {
-      name: '@electron-forge/maker-zip',
-      platforms: ['win32'],
-      config: {
-        // Only build for windows to reduce time
-        // Improve compression
-        options: {
-          compression: 'maximum'
-        }
       }
     }
   ],
-  // Add GitHub publisher configuration
   publishers: [
     {
       name: '@electron-forge/publisher-github',
       config: {
         repository: {
           owner: 'ThatQne',
-          name: 'todo'
+          name: 'dothat'
         },
         prerelease: false,
         draft: false
@@ -141,25 +115,27 @@ const config = {
           config: './webpack.renderer.config.js',
           entryPoints: [
             {
-              html: './src/index.html',
               js: './src/renderer.js',
               name: 'main_window',
               preload: {
                 js: './src/preload.js'
+              },
+              htmlWebpackPlugin: {
+                publicPath: './'
               }
             }
           ]
         },
-        // Updated CSP to allow unsafe-eval for HMR
+        port: 3000,
         devContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss: localhost:*",
-        // Use development mode in dev, production in prod
         mode: isDevelopment ? 'development' : 'production',
-        // Enable faster development experience
+        logging: isDevelopment ? 'verbose' : 'info',
+        nodeIntegration: false,
         devServer: {
           hot: true,
-          liveReload: false, // Disable live reload in favor of HMR
-          compress: false, // Disable compression in dev for speed
-          static: false, // Disable static file serving to improve rebuild times
+          liveReload: false,
+          compress: false,
+          static: false,
           client: {
             overlay: {
               errors: true,
@@ -168,35 +144,29 @@ const config = {
             progress: true
           },
           devMiddleware: {
-            writeToDisk: true, // Write to disk to ensure preload script is accessible
+            publicPath: '/main_window',
+            writeToDisk: true
           }
         },
-        // Don't watch node_modules for faster recompilation
         watchOptions: {
           ignored: /node_modules/
         }
       }
     },
-    // Only include FusesPlugin in production mode
     ...(isDevelopment ? [] : [
-    new FusesPlugin({
-      version: FuseVersion.V1,
-      [FuseV1Options.RunAsNode]: false,
-      [FuseV1Options.EnableCookieEncryption]: true,
-      [FuseV1Options.OnlyLoadAppFromAsar]: true
-    })
+      new FusesPlugin({
+        version: FuseVersion.V1,
+        [FuseV1Options.RunAsNode]: false,
+        [FuseV1Options.EnableCookieEncryption]: true,
+        [FuseV1Options.OnlyLoadAppFromAsar]: true
+      })
     ])
   ]
 };
 
 // Add icon to packager config if it exists
-if (hasIcoIcon || hasPngIcon || hasIcnsIcon) {
-  config.packagerConfig.icon = iconPath;
-}
-
-// Add icons to maker configs if they exist
 if (hasIcoIcon) {
-  if (!config.makers[0].config) config.makers[0].config = {};
+  config.packagerConfig.icon = iconPath;
   config.makers[0].config.setupIcon = iconPath + '.ico';
 }
 

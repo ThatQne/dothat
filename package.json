@@ -4,13 +4,19 @@
   "version": "1.0.5",
   "description": "A beautiful app to plan and organize your exams and tasks",
   "main": ".webpack/x64/main/index.js",
-  "homepage": "https://thatqne.github.io/dothat",
+
+  "extraResources": [
+    {
+      "from": ".webpack/x64/renderer",
+      "to": "renderer"
+    }
+  ],
   "scripts": {
     "start": "rimraf .webpack && cross-env NODE_ENV=development ELECTRON_ENABLE_LOGGING=1 FORCE_COLOR=1 FORCE_HMR=true electron-forge start",
-    "package": "cross-env NODE_ENV=production electron-forge package",
-    "make": "cross-env NODE_ENV=production electron-forge make",
-    "publish": "cross-env NODE_ENV=production electron-forge publish",
-    "clean": "rimraf out .webpack",
+    "package": "cross-env NODE_ENV=production electron-builder --dir",
+    "make": "powershell -ExecutionPolicy Bypass -File ./make.ps1",
+    "publish": "cross-env NODE_ENV=production electron-builder --publish always",
+    "clean": "rimraf out .webpack dist node_modules/.cache",
     "lint": "echo \"No linting configured\"",
     "publish-windows": "powershell -ExecutionPolicy ByPass -File ./publish-with-token.ps1 -UseMakeCmd \"npm run make\""
   },
@@ -68,8 +74,54 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ThatQne/dothat"
+    "url": "https://github.com/ThatQne/dothat.git"
+  },
+  "build": {
+    "appId": "com.dothat.app",
+    "productName": "DoThat",
+    "directories": {
+      "output": "dist"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/electron-updater/**/*",
+      "node_modules/builder-util-runtime/**/*",
+      "node_modules/electron-log/**/*"
+    ],
+    "files": [
+      "package.json",
+      "node_modules/**/*",
+      ".webpack/x64/main/**/*",
+      ".webpack/x64/renderer/**/*"
+    ],
+
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icons/logo.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DoThat",
+      "uninstallDisplayName": "DoThat",
+      "installerIcon": "assets/icons/logo.ico",
+      "uninstallerIcon": "assets/icons/logo.ico",
+      "installerHeaderIcon": "assets/icons/logo.ico",
+      "menuCategory": true,
+      "allowElevation": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": true,
+      "include": "installer.nsh"
+    }
   }
 }
-
-

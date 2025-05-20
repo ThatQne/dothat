@@ -72,7 +72,7 @@ function Show-MainMenu {
     Write-Host " 4. Export token to .env file" -ForegroundColor Cyan
     Write-Host " 5. Test GitHub access" -ForegroundColor Cyan
     Write-Host " 6. Run publish" -ForegroundColor Green
-    Write-Host " 7. Update source code" -ForegroundColor Yellow
+    Write-Host " 7. Update GitHub with local changes" -ForegroundColor Yellow
     Write-Host " 8. Exit" -ForegroundColor Red
     Write-Host ""
     Write-Host "=================================================" -ForegroundColor Cyan
@@ -654,6 +654,12 @@ function Run-Publish {
     }
     
     Write-Host ""
+    Write-Host "Would you like to also push the source code to the main branch?" -ForegroundColor Cyan
+    $pushSourceCode = Read-Host "Enter Y to push source code, any other key to skip"
+    
+    $willPushSourceCode = $pushSourceCode -eq "Y" -or $pushSourceCode -eq "y"
+    
+    Write-Host ""
     Write-Host "Starting publish process for version $(if ($newVersion) { $newVersion } else { $currentVersion })..." -ForegroundColor Cyan
     Write-Host "This may take several minutes." -ForegroundColor Yellow
     Write-Host ""
@@ -662,22 +668,187 @@ function Run-Publish {
     Push-Location -Path $scriptDir
     
     try {
-        # Run clean first to ensure we don't use cached files with old version
-        npm run clean
+        # If source code should be pushed, commit changes first
+        if ($willPushSourceCode) {
+            Write-Host "Preparing to push source code to main branch..." -ForegroundColor Cyan
+            
+            # Check if we have Git installed
+            try {
+                $gitVersion = git --version
+                Write-Host "Git detected: $gitVersion" -ForegroundColor Green
+            } catch {
+                Write-Host "Git not found. Cannot push source code." -ForegroundColor Red
+                $willPushSourceCode = $false
+            }
+            
+            if ($willPushSourceCode) {
+                # Check if directory is a git repository
+                $isGitRepo = Test-Path -Path "$scriptDir\.git" -PathType Container
+                
+                if (-not $isGitRepo) {
+                    Write-Host "This directory is not a git repository. Initializing..." -ForegroundColor Yellow
+                    git init
+                    Write-Host "Git repository initialized" -ForegroundColor Green
+                }
+                
+                # Check git status
+                Write-Host "Checking repository status..." -ForegroundColor Cyan
+                git status
+                
+                # Get current branch
+                $currentBranch = git branch --show-current
+                Write-Host "Current branch: $currentBranch" -ForegroundColor Cyan
+                
+                # Check if remote 'origin' exists
+                $remoteExists = git remote | Where-Object { $_ -eq "origin" }
+                
+                if (-not $remoteExists) {
+                    Write-Host "Remote 'origin' does not exist. Setting it up..." -ForegroundColor Yellow
+                    
+                    # Build the repository URL
+                    $repoGitUrl = "https://github.com/$owner/$repo.git"
+                    
+                    # Add the origin remote
+                    git remote add origin $repoGitUrl
+                    
+                    Write-Host "Remote 'origin' added: $repoGitUrl" -ForegroundColor Green
+                }
+                
+                # Prompt for commit message
+                Write-Host ""
+                Write-Host "Enter commit message for the code changes:" -ForegroundColor Cyan
+                $commitMessage = Read-Host "Commit message"
+                
+                if (-not $commitMessage) {
+                    $commitMessage = "Update app to version $(if ($newVersion) { $newVersion } else { $currentVersion })"
+                }
+                
+                # Stage all files
+                Write-Host "Staging files..." -ForegroundColor Cyan
+                git add .
+                
+                # Commit changes
+                Write-Host "Committing changes..." -ForegroundColor Cyan
+                git commit -m "$commitMessage"
+                
+                # If not on main branch, create and switch to it
+                if ($currentBranch -ne "main") {
+                    # Check if main branch exists
+                    $mainExists = git branch --list main
+                    
+                    if ($mainExists) {
+                        Write-Host "Switching to main branch..." -ForegroundColor Cyan
+                        git checkout main
+                        
+                        # Merge changes from current branch
+                        Write-Host "Merging changes from $currentBranch into main..." -ForegroundColor Cyan
+                        git merge $currentBranch
+                    } else {
+                        Write-Host "Creating and switching to main branch..." -ForegroundColor Cyan
+                        git checkout -b main
+                    }
+                }
+                
+                # Set up the remote with token
+                $repoUrlWithToken = "https://$env:GITHUB_TOKEN@github.com/$owner/$repo.git"
+                git remote set-url origin $repoUrlWithToken
+                
+                # Fetch the latest changes from remote
+                Write-Host "Fetching latest changes from remote repository..." -ForegroundColor Cyan
+                git fetch origin
+                
+                # Push changes to remote with different strategies if simple push fails
+                Write-Host "Pushing changes to main branch..." -ForegroundColor Cyan
+                try {
+                    # First attempt: simple push
+                    git push -u origin main
+                    $pushSuccess = $?
+                    
+                    # If push failed, try pull then push
+                    if (-not $pushSuccess) {
+                        Write-Host "Initial push failed. Trying to integrate remote changes..." -ForegroundColor Yellow
+                        
+                        # Try to pull with rebase first (keeps commits cleaner)
+                        Write-Host "Attempting git pull with rebase strategy..." -ForegroundColor Cyan
+                        git pull --rebase origin main
+                        $pullSuccess = $?
+                        
+                        if (-not $pullSuccess) {
+                            # If rebase fails, try regular merge
+                            Write-Host "Rebase strategy failed. Trying regular merge..." -ForegroundColor Yellow
+                            git pull origin main
+                            $pullSuccess = $?
+                            
+                            if (-not $pullSuccess) {
+                                Write-Host "Could not integrate remote changes automatically." -ForegroundColor Red
+                                Write-Host "Remote repository history differs significantly from local." -ForegroundColor Red
+                                
+                                # Ask user if they want to force push (potentially dangerous)
+                                Write-Host ""
+                                Write-Host "CAUTION: You can force push your changes, but this may OVERWRITE" -ForegroundColor Red
+                                Write-Host "remote work that's not in your local repository." -ForegroundColor Red
+                                $forcePush = Read-Host "Force push? (y/N)"
+                                
+                                if ($forcePush -eq "y" -or $forcePush -eq "Y") {
+                                    Write-Host "Force pushing to main branch..." -ForegroundColor Yellow
+                                    git push -f origin main
+                                    $pushSuccess = $?
+                                } else {
+                                    Write-Host "Force push cancelled." -ForegroundColor Yellow
+                                    $pushSuccess = $false
+                                }
+                            } else {
+                                # Try pushing again after successful merge
+                                git push origin main
+                                $pushSuccess = $?
+                            }
+                        } else {
+                            # Try pushing again after successful rebase
+                            git push origin main
+                            $pushSuccess = $?
+                        }
+                    }
+                    
+                    if ($pushSuccess) {
+                        Write-Host "Source code pushed to main branch successfully!" -ForegroundColor Green
+                    } else {
+                        Write-Host "Failed to push source code to main branch." -ForegroundColor Red
+                        Write-Host "Consider pushing manually after resolving conflicts." -ForegroundColor Yellow
+                    }
+                } catch {
+                    Write-Host "Error during Git operations: $_" -ForegroundColor Red
+                }
+                
+                # Reset remote URL to not include token
+                git remote set-url origin "https://github.com/$owner/$repo.git"
+                
+                # Switch back to original branch if different
+                if ($currentBranch -ne "main" -and $currentBranch -ne "") {
+                    Write-Host "Switching back to $currentBranch branch..." -ForegroundColor Cyan
+                    git checkout $currentBranch
+                }
+            }
+        }
         
         # If the UseMakeCmd parameter is provided, use it instead of the default publish command
         if ($UseMakeCmd) {
             Write-Host "Using custom make command: $UseMakeCmd" -ForegroundColor Cyan
             Invoke-Expression $UseMakeCmd
-            
             # If make was successful, run the publish step separately
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "Make completed successfully, publishing to GitHub..." -ForegroundColor Green
                 npm run publish
             }
         } else {
-            # Run the default publish command if no custom make command
-            npm run publish
+            # Always run make before publish
+            Write-Host "Running 'npm run make' before publishing..." -ForegroundColor Cyan
+            npm run make
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "Make completed successfully, publishing to GitHub..." -ForegroundColor Green
+                npm run publish
+            } else {
+                Write-Host "Make failed, skipping publish." -ForegroundColor Red
+            }
         }
         
         # Check exit code
@@ -704,109 +875,137 @@ function Run-Publish {
     Read-Host "Press Enter to return to the main menu"
 }
 
-function Update-SourceCode {
+function Update-GitHubWithLocalChanges {
     Clear-Host
     Write-Host "=================================================" -ForegroundColor Cyan
-    Write-Host "|              UPDATE SOURCE CODE               |" -ForegroundColor Cyan
+    Write-Host "|         UPDATE GITHUB WITH LOCAL CHANGES       |" -ForegroundColor Cyan
     Write-Host "=================================================" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "DEBUG: scriptDir is $scriptDir" -ForegroundColor Magenta
-    Write-Host "This will update your local code from the main branch." -ForegroundColor Yellow
-    Write-Host "Any local changes will be stashed before updating." -ForegroundColor Yellow
-    Write-Host ""
     
-    $confirm = Read-Host "Do you want to proceed? (y/n)"
-    if ($confirm -ne "y") {
+    # Check if GitHub token is set
+    if (-not $env:GITHUB_TOKEN) {
+        Write-Host "Error: GitHub token not set!" -ForegroundColor Red
+        Write-Host "Please set your GitHub token first using option 2 or 3." -ForegroundColor Red
         Write-Host ""
+        Read-Host "Press Enter to return to the main menu"
+        return
+    }
+    
+    Write-Host "This will update GitHub with your local changes." -ForegroundColor Yellow
+    Write-Host "Your local files will not be modified." -ForegroundColor Yellow
+    Write-Host ""
+    $confirm = Read-Host "Do you want to continue? (y/n)"
+    
+    if ($confirm -ne "y") {
         Write-Host "Operation cancelled." -ForegroundColor Red
         Write-Host ""
         Read-Host "Press Enter to return to the main menu"
         return
     }
     
+    # Save current location and change to script directory
+    $originalLocation = Get-Location
+    Set-Location -Path $scriptDir
+    
     try {
-        Push-Location -Path $scriptDir
+        # Check if git is installed
+        try {
+            $gitVersion = git --version
+            Write-Host "Git detected: $gitVersion" -ForegroundColor Green
+        } catch {
+            Write-Host "Error: Git is not installed or not in PATH!" -ForegroundColor Red
+            Write-Host "Please install Git and try again." -ForegroundColor Red
+            Write-Host ""
+            Read-Host "Press Enter to return to the main menu"
+            return
+        }
+
         # Check if we're in a git repository
-        $isGitRepo = Test-Path -Path "$scriptDir\.git" -PathType Container
-        
-        if (-not $isGitRepo) {
-            Write-Host "This directory is not a git repository." -ForegroundColor Red
-            Write-Host "Would you like to initialize it as a git repository?" -ForegroundColor Yellow
-            $initGit = Read-Host "Enter Y to initialize git repository, any other key to cancel"
-            
-            if ($initGit -ne "Y" -and $initGit -ne "y") {
-                Write-Host ""
-                Write-Host "Operation cancelled." -ForegroundColor Red
-                Write-Host ""
-                Read-Host "Press Enter to return to the main menu"
-                Pop-Location
-                return
-            }
-            
-            # Initialize git repository
+        $gitStatus = git status 2>&1
+        if ($gitStatus -match "fatal: not a git repository") {
             Write-Host "Initializing git repository..." -ForegroundColor Yellow
             git init
             
-            # Get repository URL from package.json
+            # Get repository info from package.json
             $packageJsonPath = "$scriptDir\package.json"
             if (Test-Path $packageJsonPath) {
-                $packageJson = Get-Content $packageJsonPath -Raw | ConvertFrom-Json
+                $packageJson = Get-Content $packageJsonPath | ConvertFrom-Json
                 if ($packageJson.repository -and $packageJson.repository.url) {
                     $repoUrl = $packageJson.repository.url
-                    Write-Host "Adding remote origin: $repoUrl" -ForegroundColor Yellow
-                    git remote add origin $repoUrl
+                    if ($repoUrl -match "github\.com\/([^\/]+)\/([^\/\.]+)") {
+                        $owner = $Matches[1]
+                        $repo = $Matches[2]
+                        Write-Host "Adding remote repository: $owner/$repo" -ForegroundColor Cyan
+                        git remote add origin "https://github.com/$owner/$repo.git"
+                    }
                 }
             }
         }
-        
-        # Check if we have any changes to stash
-        $hasChanges = git status --porcelain
-        if ($hasChanges) {
-            Write-Host "Stashing local changes..." -ForegroundColor Yellow
-            git stash
+
+        # Get the current branch name
+        $currentBranch = git rev-parse --abbrev-ref HEAD
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "No commits yet. Creating initial commit..." -ForegroundColor Yellow
+            git add .
+            git commit -m "Initial commit"
+            $currentBranch = git rev-parse --abbrev-ref HEAD
         }
         
-        # Check if we have a remote
-        $hasRemote = git remote | Where-Object { $_ -eq "origin" }
-        if (-not $hasRemote) {
-            Write-Host "No remote repository configured." -ForegroundColor Red
-            Write-Host "Please configure a remote repository first." -ForegroundColor Yellow
+        Write-Host "Current branch: $currentBranch" -ForegroundColor Cyan
+        
+        # Stage all changes
+        Write-Host "`nStaging changes..." -ForegroundColor Cyan
+        git add .
+        
+        # Get the status to show what will be pushed
+        Write-Host "`nChanges to be pushed:" -ForegroundColor Yellow
+        git status
+        
+        # Check if there are any changes to commit
+        $status = git status --porcelain
+        if (-not $status) {
+            Write-Host "`nNo changes to commit!" -ForegroundColor Yellow
             Write-Host ""
             Read-Host "Press Enter to return to the main menu"
-            Pop-Location
             return
         }
         
-        # Pull latest changes from main branch
-        Write-Host "Pulling latest changes from main branch..." -ForegroundColor Yellow
-        git pull origin main
+        # Commit the changes
+        Write-Host "`nCommitting changes..." -ForegroundColor Cyan
+        $commitMessage = Read-Host "Enter commit message (or press Enter for default message)"
+        if (-not $commitMessage) {
+            $commitMessage = "Update local changes to GitHub"
+        }
+        git commit -m $commitMessage
         
-        # Apply stashed changes if any
-        if ($hasChanges) {
-            Write-Host "Applying stashed changes..." -ForegroundColor Yellow
-            git stash pop
+        # Check if remote exists
+        $remotes = git remote
+        if (-not $remotes -or -not ($remotes -contains "origin")) {
+            Write-Host "`nNo remote repository configured!" -ForegroundColor Red
+            Write-Host "Please configure a remote repository first." -ForegroundColor Red
+            Write-Host ""
+            Read-Host "Press Enter to return to the main menu"
+            return
         }
         
-        # Add all changes
-        Write-Host "Adding all changes..." -ForegroundColor Yellow
-        git add .
+        # Push to GitHub
+        Write-Host "`nPushing to GitHub..." -ForegroundColor Cyan
+        git push origin $currentBranch
         
-        # Commit changes
-        Write-Host "Committing changes..." -ForegroundColor Yellow
-        git commit -m "Update source code"
-        
-        # Push changes
-        Write-Host "Pushing changes to main branch..." -ForegroundColor Yellow
-        git push origin main
-        
-        Write-Host ""
-        Write-Host "Source code updated successfully!" -ForegroundColor Green
-        Pop-Location
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "`nSuccessfully updated GitHub with local changes!" -ForegroundColor Green
+        } else {
+            Write-Host "`nFailed to push changes to GitHub." -ForegroundColor Red
+            Write-Host "You may need to pull changes first or resolve conflicts." -ForegroundColor Yellow
+        }
     }
     catch {
-        Write-Host ""
-        Write-Host "Error updating source code: $_" -ForegroundColor Red
-        Write-Host "Please make sure you have git installed and configured properly." -ForegroundColor Yellow
+        Write-Host "`nError occurred while updating GitHub:" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Red
+    }
+    finally {
+        # Restore original location
+        Set-Location -Path $originalLocation
     }
     
     Write-Host ""
@@ -825,7 +1024,7 @@ while ($running) {
         "4" { Export-TokenToEnvFile }
         "5" { Test-GitHubAccess }
         "6" { Run-Publish }
-        "7" { Update-SourceCode }
+        "7" { Update-GitHubWithLocalChanges }
         "8" { $running = $false }
         default { 
             Write-Host ""
