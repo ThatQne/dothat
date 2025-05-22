@@ -18,9 +18,6 @@ const SettingsPage = () => {
   
   // Add state for delete confirmation
   const [showDeleteAllConfirmation, setShowDeleteAllConfirmation] = useState(false);
-  
-  // State for theme preview
-  const [previewTheme, setPreviewTheme] = useState(null);
 
   // Log available theme keys
   useEffect(() => {
@@ -95,55 +92,8 @@ const SettingsPage = () => {
   // Handle theme change
   const handleThemeChange = (theme) => {
     setCurrentTheme(theme);
-    setPreviewTheme(null);
   };
   
-  // Preview theme without changing it
-  const handleThemePreview = (theme) => {
-    setPreviewTheme(theme);
-  };
-  
-  // Reset theme preview
-  const handleResetPreview = () => {
-    setPreviewTheme(null);
-  };
-  
-  // Apply theme preview temporarily
-  useEffect(() => {
-    if (previewTheme) {
-      const root = document.documentElement;
-      const theme = themes[previewTheme];
-      
-      // Save original theme to restore later
-      const originalTheme = currentTheme;
-      
-      // Apply preview theme
-      Object.entries(theme).forEach(([key, value]) => {
-        root.style.setProperty(`--${key}`, value);
-      });
-      
-      // Set body background color
-      document.body.style.backgroundColor = theme.background;
-      document.body.style.color = theme.text;
-      
-      // Restore original theme when component unmounts or preview changes
-      return () => {
-        if (originalTheme !== previewTheme) {
-          const originalThemeValues = themes[originalTheme];
-          
-          // Restore original theme
-          Object.entries(originalThemeValues).forEach(([key, value]) => {
-            root.style.setProperty(`--${key}`, value);
-          });
-          
-          // Restore body background
-          document.body.style.backgroundColor = originalThemeValues.background;
-          document.body.style.color = originalThemeValues.text;
-        }
-      };
-    }
-  }, [previewTheme, currentTheme]);
-
   // Notification threshold handlers
   const handleRemoveThreshold = (threshold) => {
     const newThresholds = settings.notificationThresholds.filter(t => t !== threshold);
@@ -234,7 +184,6 @@ const SettingsPage = () => {
   const ThemeOption = ({ themeKey }) => {
     const themeData = themes[themeKey];
     const isActive = currentTheme === themeKey;
-    const isPreviewing = previewTheme === themeKey;
     
     return (
       <div 
@@ -258,13 +207,11 @@ const SettingsPage = () => {
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            border: `2px solid ${isActive ? 'var(--accent)' : isPreviewing ? 'var(--primary)' : 'transparent'}`,
-            boxShadow: isActive || isPreviewing ? '0 4px 12px rgba(0,0,0,0.2)' : 'none',
+            border: `2px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
+            boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.2)' : 'none',
             position: 'relative'
           }}
           onClick={() => handleThemeChange(themeKey)}
-          onMouseEnter={() => handleThemePreview(themeKey)}
-          onMouseLeave={handleResetPreview}
         >
           {/* Header */}
           <div style={{

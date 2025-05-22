@@ -149,7 +149,7 @@ const createWindow = () => {
     minHeight: 600,
     backgroundColor: '#181818', // Match your dark theme background
     webPreferences: {
-      preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
+      preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
       enableRemoteModule: true, // Enable remote module
@@ -259,9 +259,15 @@ const createWindow = () => {
     log.warn('Failed to create splash screen:', error);
   }
 
+  // Dynamic URL for loading the index.html
+  const isDev = process.env.NODE_ENV === 'development';
+  const mainWindowURL = isDev
+    ? 'http://localhost:3000/main_window'
+    : (typeof MAIN_WINDOW_WEBPACK_ENTRY !== 'undefined' ? MAIN_WINDOW_WEBPACK_ENTRY : undefined);
+
   // Load the index.html of the app
   log.info('Loading app URL...');
-  mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY).catch(error => {
+  mainWindow.loadURL(mainWindowURL).catch(error => {
     log.error('Failed to load app URL:', error);
   });
 
@@ -399,3 +405,9 @@ ipcMain.handle('get-app-version', () => {
 
   // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
+
+// Dynamic preload path for dev/prod
+const isDev = process.env.NODE_ENV === 'development';
+const preloadPath = isDev
+  ? path.join(__dirname, 'preload.js')
+  : (typeof MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY !== 'undefined' ? MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY : undefined);

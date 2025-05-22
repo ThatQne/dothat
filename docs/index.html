@@ -4,20 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DoThat - Your Smart Task Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 </head>
 <body>
     <div class="cursor"></div>
-    <div class="cursor-follower"></div>
+    <svg class="trail-container">
+        <path class="trail-path" d="" />
+    </svg>
 
     <nav>
         <div class="nav-content">
             <div class="logo">DoThat</div>
             <div class="nav-links">
                 <a href="#features">Features</a>
-                <a href="#download">Download</a>
+                <a href="https://github.com/ThatQne/dothat/releases" target="_blank" class="download-link">Download</a>
                 <a href="https://github.com/ThatQne/dothat" target="_blank">GitHub</a>
             </div>
         </div>
@@ -26,11 +32,13 @@
     <main>
         <section class="hero">
             <div class="hero-content">
-                <h1 class="glitch" data-text="DoThat">DoThat</h1>
-                <p class="subtitle">Your intelligent task management companion</p>
+                <h1>DoThat</h1>
+                <p class="subtitle">Minimalist Task Manager</p>
                 <div class="cta-buttons">
-                    <a href="#download" class="cta-primary">Download Now</a>
-                    <a href="#features" class="cta-secondary">Learn More</a>
+                    <a href="https://github.com/ThatQne/dothat/releases" target="_blank" class="cta-primary">
+                        <i class="fas fa-download"></i>
+                        Download Now
+                    </a>
                 </div>
             </div>
             <div class="hero-image">
@@ -42,45 +50,171 @@
             <h2>Features</h2>
             <div class="feature-grid">
                 <div class="feature-card">
-                    <div class="feature-icon">📝</div>
-                    <h3>Smart Task Management</h3>
-                    <p>Organize your tasks with an intuitive interface</p>
+                    <div class="feature-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <h3>Smart Date Input</h3>
+                    <p>Type dates to add them quickly</p>
+                    <div class="feature-demo">
+                        <div class="demo-input-container">
+                            <input type="text" class="demo-input" readonly>
+                            <div class="demo-cursor"></div>
+                        </div>
+                        <div class="demo-date-badge"></div>
+                    </div>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3>Priority Focus</h3>
-                    <p>Focus on what matters most with priority levels</p>
+                    <div class="feature-icon">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <h3>Task Groups</h3>
+                    <p>Click and hold to group related tasks</p>
+                    <div class="feature-demo task-group-demo">
+                        <div class="mock-cursor"></div>
+                        <div class="demo-task-group"></div>
+                        <div class="demo-task" data-task="1">
+                            <div class="task-content">Complete project proposal</div>
+                            <div class="progress-bar"></div>
+                        </div>
+                        <div class="demo-task" data-task="2">
+                            <div class="task-content">Review team feedback</div>
+                            <div class="progress-bar"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <h3>Progress Tracking</h3>
-                    <p>Monitor your productivity with detailed analytics</p>
+                    <div class="feature-icon">
+                        <i class="fas fa-sort-amount-down"></i>
+                    </div>
+                    <h3>Drag & Drop Reorder</h3>
+                    <p>Drag to reorder tasks</p>
+                    <div class="feature-demo task-reorder-demo">
+                        <div class="mock-cursor"></div>
+                        <div class="reorder-task-container">
+                            <div class="demo-task reorder-task" data-task-id="task1">
+                                <div class="task-content">Task Alpha</div>
+                            </div>
+                            <div class="demo-task reorder-task" data-task-id="task2">
+                                <div class="task-content">Task Bravo</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">⚡</div>
-                    <h3>Lightning Fast</h3>
-                    <p>Built with Electron for optimal performance</p>
+                    <div class="feature-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <h3>Due Dates & Times</h3>
+                    <p>Set precise dates and times</p>
+                    <div class="feature-demo due-date-demo">
+                        <div class="calendar-widget">
+                            <div class="calendar-header">
+                                <span class="month-year">October 2024</span>
+                            </div>
+                            <div class="calendar-grid">
+                                <div class="day-name">Mo</div><div class="day-name">Tu</div><div class="day-name">We</div><div class="day-name">Th</div><div class="day-name">Fr</div><div class="day-name">Sa</div><div class="day-name">Su</div>
+                                <div class="day prev-month">30</div><div class="day">1</div><div class="day">2</div><div class="day">3</div><div class="day">4</div><div class="day">5</div><div class="day">6</div>
+                                <div class="day">7</div><div class="day">8</div><div class="day">9</div><div class="day selected">10</div><div class="day">11</div><div class="day">12</div><div class="day">13</div>
+                                <div class="day">14</div><div class="day">15</div><div class="day">16</div><div class="day">17</div><div class="day">18</div><div class="day">19</div><div class="day">20</div>
+                                <div class="day">21</div><div class="day">22</div><div class="day">23</div><div class="day">24</div><div class="day">25</div><div class="day">26</div><div class="day">27</div>
+                                <div class="day">28</div><div class="day">29</div><div class="day">30</div><div class="day">31</div><div class="day next-month">1</div><div class="day next-month">2</div><div class="day next-month">3</div>
+                            </div>
+                            <div class="calendar-footer">
+                                <span class="due-label">Due:</span>
+                                <span class="due-date-text">Oct 10, 2024</span>
+                                <span class="at-label">at</span>
+                                <span class="due-time-text">4:30 PM</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <h3>Reminders & Recurring</h3>
+                    <p>Set reminders and alerts</p>
+                    <div class="feature-demo reminder-demo">
+                        <div class="reminder-row">
+                            <span class="reminder-label">Remind me:</span>
+                            <span class="reminder-time">10 minutes before</span>
+                        </div>
+                        <div class="reminder-row">
+                            <span class="reminder-label">Repeat:</span>
+                            <span class="reminder-frequency">Every week</span>
+                        </div>
+                        <div class="reminder-row days-row">
+                            <span class="reminder-label">On:</span>
+                            <div class="reminder-days">
+                                <span class="reminder-day selected">M</span>
+                                <span class="reminder-day">T</span>
+                                <span class="reminder-day selected">W</span>
+                                <span class="reminder-day">T</span>
+                                <span class="reminder-day selected">F</span>
+                                <span class="reminder-day">S</span>
+                                <span class="reminder-day">S</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-sitemap"></i>
+                    </div>
+                    <h3>Subtask Management</h3>
+                    <p>Create nested subtasks for tasks</p>
+                    <div class="feature-demo subtask-demo">
+                        <div class="mock-cursor"></div>
+                        <div class="main-task-container">
+                            <div class="demo-task main-task" data-task-id="main1">
+                                <div class="task-content-wrapper">
+                                    <span class="task-content">Project</span>
+                                    <div class="subtask-counter">0</div>
+                                    <div class="subtask-toggle">
+                                        <i class="fas fa-chevron-down"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="subtasks-container">
+                                <!-- Subtasks will be added here by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-palette"></i>
+                    </div>
+                    <h3>Themes & Customization</h3>
+                    <p>Choose or make your own theme</p>
+                    <div class="feature-demo theme-demo">
+                        <div class="theme-switcher">
+                            <button class="theme-btn" data-theme="dark">Dark</button>
+                            <button class="theme-btn" data-theme="light">Light</button>
+                        </div>
+                        <div class="theme-preview" id="themePreview">
+                            <div class="theme-preview-header">Task List</div>
+                            <div class="theme-preview-task"></div>
+                            <div class="theme-preview-task"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </div>
+                    <h3>And more...</h3>
                 </div>
             </div>
         </section>
 
-        <section id="download" class="download">
-            <h2>Download DoThat</h2>
-            <p>Available for Windows, macOS, and Linux</p>
-            <div class="download-buttons">
-                <a href="#" class="download-button windows">
-                    <span class="icon">🪟</span>
-                    <span class="text">Windows</span>
-                </a>
-                <a href="#" class="download-button mac">
-                    <span class="icon">🍎</span>
-                    <span class="text">macOS</span>
-                </a>
-                <a href="#" class="download-button linux">
-                    <span class="icon">🐧</span>
-                    <span class="text">Linux</span>
-                </a>
-            </div>
+        <section class="download-cta">
+            <h2>Ready to Get Started?</h2>
+            <p>Download DoThat now and boost your productivity</p>
+            <a href="https://github.com/ThatQne/dothat/releases" target="_blank" class="cta-primary">
+                <i class="fas fa-download"></i>
+                Download Now
+            </a>
         </section>
     </main>
 

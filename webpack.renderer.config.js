@@ -1,7 +1,7 @@
-const HtmlWebpackPlugin = require('html-webpack-plugin');
 const rules = require('./webpack.rules');
 const TerserPlugin = require('terser-webpack-plugin');
 const webpack = require('webpack');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path');
 
 // Get the package.json version for consistency
@@ -23,25 +23,33 @@ rules.push({
 });
 
 module.exports = {
-  // Put your normal webpack config below 
+  // Put your normal webpack config below here
   output: {
-    path: path.resolve(__dirname, '.webpack/renderer'),
-    publicPath: '../',
+    publicPath: '', // <--- THIS IS THE KEY
   },
+  
   module: {
     rules,
   },
   mode: isDevelopment ? 'development' : 'production',
   plugins: [
-    new HtmlWebpackPlugin({
-      template: './src/index.html',
-      filename: 'main_window/index.html',
-      inject: 'body',
-      publicPath: '../'
-    }),
+    // Add DefinePlugin to make APP_VERSION available in renderer
     new webpack.DefinePlugin({
       'APP_VERSION': JSON.stringify(appVersion || '1.0.0'),
       'process.env.NODE_ENV': JSON.stringify(isDevelopment ? 'development' : 'production')
+    }),
+    new HtmlWebpackPlugin({
+      template: './src/index.html',
+      filename: 'index.html',
+      inject: 'body',
+      minify: !isDevelopment && {
+        collapseWhitespace: true,
+        removeComments: true,
+        removeRedundantAttributes: true,
+        removeScriptTypeAttributes: true,
+        removeStyleLinkTypeAttributes: true,
+        useShortDoctype: true
+      }
     })
   ],
   optimization: isDevelopment ? {

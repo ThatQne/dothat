@@ -7,7 +7,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { showToast } from '../utils/notifications';
 
 // Menu dropdown component using Portal
-const MenuDropdown = ({ isOpen, onClose, position, task, isCompleted, onDelete, onEdit, menuButtonRef }) => {
+const MenuDropdown = ({ isOpen, onClose, position, task, isCompleted, onDelete, onEdit, menuButtonRef, onAddSubtask }) => {
   const menuRef = useRef(null);
   
   useEffect(() => {
@@ -68,6 +68,16 @@ const MenuDropdown = ({ isOpen, onClose, position, task, isCompleted, onDelete, 
     }
     onClose();
   };
+
+  // Handle add subtask click
+  const handleAddSubtaskClick = () => {
+    if (typeof onAddSubtask === 'function') {
+      onAddSubtask(task.id);
+    } else {
+      console.error('onAddSubtask is not a function', onAddSubtask);
+    }
+    onClose();
+  };
   
   // Use portal to render outside of the normal DOM hierarchy
   return ReactDOM.createPortal(
@@ -103,6 +113,25 @@ const MenuDropdown = ({ isOpen, onClose, position, task, isCompleted, onDelete, 
       >
         <MdEdit size={16} />
         <span>Edit</span>
+      </div>
+
+      <div
+        style={{
+          padding: '8px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          color: 'var(--text)',
+          cursor: 'pointer',
+          transition: 'background-color 0.15s',
+          borderBottom: '1px solid var(--borderLight)'
+        }}
+        onClick={handleAddSubtaskClick}
+        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--surfaceLight)'}
+        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+      >
+        <MdAdd size={16} />
+        <span>Add Subtask</span>
       </div>
       
       <div
@@ -501,7 +530,7 @@ const TaskItem = ({
       if (hoursUntilTomorrow > 0 && hoursUntilTomorrow < 24) {
         return (
           <span>
-            <span style={{ color: 'var(--accent)', fontWeight: '500' }}>Tomorrow</span>
+            <span style={{ color: 'var(--accentLight)', fontWeight: '500' }}>Tomorrow</span>
             {hasTime && (
               <span>
                 <span style={{ margin: '0 4px' }}>at</span>
@@ -518,7 +547,7 @@ const TaskItem = ({
       // Default tomorrow format
       return (
         <span>
-          <span style={{ color: 'var(--accent)', fontWeight: '500' }}>Tomorrow</span>
+          <span style={{ color: 'var(--accentLight)', fontWeight: '500' }}>Tomorrow</span>
           {hasTime && (
             <span>
               <span style={{ margin: '0 4px' }}>at</span>
@@ -936,6 +965,7 @@ const TaskItem = ({
             onDelete={onDelete}
             onEdit={onEdit}
             menuButtonRef={menuButtonRef}
+            onAddSubtask={onAddSubtask}
           />
         </div>
       </div>

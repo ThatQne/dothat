@@ -72,8 +72,8 @@ function Show-MainMenu {
     Write-Host " 4. Export token to .env file" -ForegroundColor Cyan
     Write-Host " 5. Test GitHub access" -ForegroundColor Cyan
     Write-Host " 6. Run publish" -ForegroundColor Green
-    Write-Host " 7. Update GitHub with local changes" -ForegroundColor Yellow
-    Write-Host " 8. Exit" -ForegroundColor Red
+    Write-Host " 7. Exit" -ForegroundColor Red
+    Write-Host " 8. Update GitHub (sync local to remote, including deletions)" -ForegroundColor Magenta
     Write-Host ""
     Write-Host "=================================================" -ForegroundColor Cyan
     $choice = Read-Host "  Enter your choice (1-8)"
@@ -875,141 +875,84 @@ function Run-Publish {
     Read-Host "Press Enter to return to the main menu"
 }
 
-function Update-GitHubWithLocalChanges {
-    Clear-Host
-    Write-Host "=================================================" -ForegroundColor Cyan
-    Write-Host "|         UPDATE GITHUB WITH LOCAL CHANGES       |" -ForegroundColor Cyan
-    Write-Host "=================================================" -ForegroundColor Cyan
-    Write-Host ""
-    
-    # Check if GitHub token is set
-    if (-not $env:GITHUB_TOKEN) {
-        Write-Host "Error: GitHub token not set!" -ForegroundColor Red
-        Write-Host "Please set your GitHub token first using option 2 or 3." -ForegroundColor Red
-        Write-Host ""
-        Read-Host "Press Enter to return to the main menu"
-        return
-    }
-    
-    Write-Host "This will update GitHub with your local changes." -ForegroundColor Yellow
-    Write-Host "Your local files will not be modified." -ForegroundColor Yellow
-    Write-Host ""
-    $confirm = Read-Host "Do you want to continue? (y/n)"
-    
-    if ($confirm -ne "y") {
-        Write-Host "Operation cancelled." -ForegroundColor Red
-        Write-Host ""
-        Read-Host "Press Enter to return to the main menu"
-        return
-    }
-    
-    # Save current location and change to script directory
-    $originalLocation = Get-Location
-    Set-Location -Path $scriptDir
-    
+function Update-GitHubSync {
+    Push-Location -Path $scriptDir
     try {
-        # Check if git is installed
-        try {
-            $gitVersion = git --version
-            Write-Host "Git detected: $gitVersion" -ForegroundColor Green
-        } catch {
-            Write-Host "Error: Git is not installed or not in PATH!" -ForegroundColor Red
-            Write-Host "Please install Git and try again." -ForegroundColor Red
+        Clear-Host
+        Write-Host "=================================================" -ForegroundColor Cyan
+        Write-Host "|         UPDATE GITHUB: FULL SYNC (FORCE)        |" -ForegroundColor Cyan
+        Write-Host "=================================================" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "This will force the GitHub repository to match your local files." -ForegroundColor Yellow
+        Write-Host "All local changes (including deletions) will be pushed, and remote-only files will be removed." -ForegroundColor Yellow
+        Write-Host ""
+        $confirm = Read-Host "Are you sure you want to continue? This will overwrite remote with local. (y/N)"
+        if ($confirm -ne "y" -and $confirm -ne "Y") {
+            Write-Host "Operation cancelled." -ForegroundColor Red
             Write-Host ""
             Read-Host "Press Enter to return to the main menu"
             return
         }
 
-        # Check if we're in a git repository
-        $gitStatus = git status 2>&1
-        if ($gitStatus -match "fatal: not a git repository") {
-            Write-Host "Initializing git repository..." -ForegroundColor Yellow
-            git init
-            
-            # Get repository info from package.json
-            $packageJsonPath = "$scriptDir\package.json"
-            if (Test-Path $packageJsonPath) {
-                $packageJson = Get-Content $packageJsonPath | ConvertFrom-Json
-                if ($packageJson.repository -and $packageJson.repository.url) {
-                    $repoUrl = $packageJson.repository.url
-                    if ($repoUrl -match "github\.com\/([^\/]+)\/([^\/\.]+)") {
-                        $owner = $Matches[1]
-                        $repo = $Matches[2]
-                        Write-Host "Adding remote repository: $owner/$repo" -ForegroundColor Cyan
-                        git remote add origin "https://github.com/$owner/$repo.git"
-                    }
-                }
-            }
-        }
-
-        # Get the current branch name
-        $currentBranch = git rev-parse --abbrev-ref HEAD
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "No commits yet. Creating initial commit..." -ForegroundColor Yellow
-            git add .
-            git commit -m "Initial commit"
-            $currentBranch = git rev-parse --abbrev-ref HEAD
-        }
-        
-        Write-Host "Current branch: $currentBranch" -ForegroundColor Cyan
-        
-        # Stage all changes
-        Write-Host "`nStaging changes..." -ForegroundColor Cyan
-        git add .
-        
-        # Get the status to show what will be pushed
-        Write-Host "`nChanges to be pushed:" -ForegroundColor Yellow
-        git status
-        
-        # Check if there are any changes to commit
-        $status = git status --porcelain
-        if (-not $status) {
-            Write-Host "`nNo changes to commit!" -ForegroundColor Yellow
+        # Get repo info from package.json
+        $packageJsonPath = "$scriptDir\package.json"
+        if (-not (Test-Path $packageJsonPath)) {
+            Write-Host "Error: package.json not found!" -ForegroundColor Red
             Write-Host ""
             Read-Host "Press Enter to return to the main menu"
             return
         }
-        
-        # Commit the changes
-        Write-Host "`nCommitting changes..." -ForegroundColor Cyan
-        $commitMessage = Read-Host "Enter commit message (or press Enter for default message)"
-        if (-not $commitMessage) {
-            $commitMessage = "Update local changes to GitHub"
-        }
-        git commit -m $commitMessage
-        
-        # Check if remote exists
-        $remotes = git remote
-        if (-not $remotes -or -not ($remotes -contains "origin")) {
-            Write-Host "`nNo remote repository configured!" -ForegroundColor Red
-            Write-Host "Please configure a remote repository first." -ForegroundColor Red
+        $packageJson = Get-Content $packageJsonPath | ConvertFrom-Json
+        if (-not $packageJson.repository -or -not $packageJson.repository.url) {
+            Write-Host "Error: No repository URL found in package.json!" -ForegroundColor Red
             Write-Host ""
             Read-Host "Press Enter to return to the main menu"
             return
         }
-        
-        # Push to GitHub
-        Write-Host "`nPushing to GitHub..." -ForegroundColor Cyan
-        git push origin $currentBranch
-        
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "`nSuccessfully updated GitHub with local changes!" -ForegroundColor Green
+        $repoUrl = $packageJson.repository.url
+        if ($repoUrl -match "github\.com\/([^\/]+)\/([^\/\.]+)") {
+            $owner = $Matches[1]
+            $repo = $Matches[2]
         } else {
-            Write-Host "`nFailed to push changes to GitHub." -ForegroundColor Red
-            Write-Host "You may need to pull changes first or resolve conflicts." -ForegroundColor Yellow
+            Write-Host "Error: Could not parse repository URL!" -ForegroundColor Red
+            Write-Host ""
+            Read-Host "Press Enter to return to the main menu"
+            return
         }
-    }
-    catch {
-        Write-Host "`nError occurred while updating GitHub:" -ForegroundColor Red
-        Write-Host $_.Exception.Message -ForegroundColor Red
+
+        # Set up the remote with token
+        $repoUrlWithToken = "https://$env:GITHUB_TOKEN@github.com/$owner/$repo.git"
+        git remote set-url origin $repoUrlWithToken
+
+        # Stage all changes, including deletions
+        git add -A
+
+        # Prompt for commit message
+        Write-Host "Enter commit message for the sync (or leave blank for default):" -ForegroundColor Cyan
+        $commitMessage = Read-Host "Commit message"
+        if (-not $commitMessage) {
+            $commitMessage = "Sync local files to GitHub (force overwrite, including deletions)"
+        }
+        git commit -m "$commitMessage"
+
+        # Force push to main branch
+        Write-Host "Force pushing to main branch (this will overwrite remote)..." -ForegroundColor Yellow
+        git push -f origin main
+        $pushSuccess = $?
+        if ($pushSuccess) {
+            Write-Host "GitHub repository updated to match local files (including deletions)." -ForegroundColor Green
+        } else {
+            Write-Host "Failed to force push to GitHub. Please resolve any issues manually." -ForegroundColor Red
+        }
+
+        # Reset remote URL to not include token
+        git remote set-url origin "https://github.com/$owner/$repo.git"
+        Write-Host ""
+        Read-Host "Press Enter to return to the main menu"
     }
     finally {
-        # Restore original location
-        Set-Location -Path $originalLocation
+        Pop-Location
     }
-    
-    Write-Host ""
-    Read-Host "Press Enter to return to the main menu"
 }
 
 # Main menu loop
@@ -1024,8 +967,8 @@ while ($running) {
         "4" { Export-TokenToEnvFile }
         "5" { Test-GitHubAccess }
         "6" { Run-Publish }
-        "7" { Update-GitHubWithLocalChanges }
-        "8" { $running = $false }
+        "7" { $running = $false }
+        "8" { Update-GitHubSync }
         default { 
             Write-Host ""
             Write-Host "Invalid choice. Please try again." -ForegroundColor Red

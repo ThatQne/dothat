@@ -17,10 +17,6 @@ module.exports = {
    */
   entry: './src/main.js',
   // Put your normal webpack config below here
-  output: {
-    path: path.resolve(__dirname, '.webpack/main'),
-    filename: 'index.js'
-  },
   module: {
     rules: require('./webpack.rules'),
   },

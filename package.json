@@ -4,7 +4,6 @@
   "version": "1.0.5",
   "description": "A beautiful app to plan and organize your exams and tasks",
   "main": ".webpack/x64/main/index.js",
-
   "extraResources": [
     {
       "from": ".webpack/x64/renderer",
@@ -12,13 +11,14 @@
     }
   ],
   "scripts": {
-    "start": "rimraf .webpack && cross-env NODE_ENV=development ELECTRON_ENABLE_LOGGING=1 FORCE_COLOR=1 FORCE_HMR=true electron-forge start",
-    "package": "cross-env NODE_ENV=production electron-builder --dir",
-    "make": "powershell -ExecutionPolicy Bypass -File ./make.ps1",
-    "publish": "cross-env NODE_ENV=production electron-builder --publish always",
+    "start": "node scripts/set-main.js dev && rimraf .webpack && cross-env NODE_ENV=development ELECTRON_ENABLE_LOGGING=1 FORCE_COLOR=1 FORCE_HMR=true electron-forge start",
+    "package": "node scripts/set-main.js prod && cross-env NODE_ENV=production electron-builder --dir",
+    "make": "node scripts/set-main.js prod && powershell -ExecutionPolicy Bypass -File ./make.ps1",
+    "publish": "node scripts/set-main.js prod && cross-env NODE_ENV=production electron-builder --publish always",
     "clean": "rimraf out .webpack dist node_modules/.cache",
     "lint": "echo \"No linting configured\"",
-    "publish-windows": "powershell -ExecutionPolicy ByPass -File ./publish-with-token.ps1 -UseMakeCmd \"npm run make\""
+    "publish-windows": "node scripts/set-main.js prod && powershell -ExecutionPolicy ByPass -File ./publish-with-token.ps1 -UseMakeCmd \"npm run make\"",
+    "web": "live-server ./docs --port=8000 --no-browser"
   },
   "keywords": [
     "electron",
@@ -55,6 +55,8 @@
     "electron-builder": "^26.0.12",
     "electron-notarize": "^1.2.2",
     "fs-extra": "^11.3.0",
+    "http-server": "^14.1.1",
+    "live-server": "^1.2.2",
     "node-loader": "^2.1.0",
     "rimraf": "^6.0.1",
     "style-loader": "^3.3.4"
@@ -94,7 +96,6 @@
       ".webpack/x64/main/**/*",
       ".webpack/x64/renderer/**/*"
     ],
-
     "win": {
       "target": [
         {

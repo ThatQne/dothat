@@ -479,9 +479,11 @@ const TaskInput = ({ onAddTask }) => {
     if (parsedDate) {
       setDueDate(parsedDate);
       setIncludeDate(true); // Show the date preview
+    } else {
+      // Clear the date if no valid date is found in the text
+      setDueDate(null);
+      setIncludeDate(false);
     }
-    // Do NOT clear the date that was set via the date picker
-    // This is the part that was causing the issue
   };
   
   const handleSubmit = (e) => {
@@ -863,7 +865,7 @@ const TaskInput = ({ onAddTask }) => {
                 )}
                 <span style={{
                   color: isTaskDueToday(dueDate) ? 'var(--success)' : 
-                         isTaskDueTomorrow(dueDate) ? 'var(--accent)' : 
+                         isTaskDueTomorrow(dueDate) ? 'var(--accentLight)' : 
                          isTaskOverdue(dueDate) ? 'var(--error)' : 'var(--text)',
                   fontWeight: (isTaskDueToday(dueDate) || isTaskDueTomorrow(dueDate) || isTaskOverdue(dueDate)) ? '500' : 'normal',
                 }}>

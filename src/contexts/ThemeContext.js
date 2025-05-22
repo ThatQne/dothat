@@ -9,6 +9,7 @@ export const themes = {
     surfaceLight: '#2A2A2A',
     primary: '#4C566A',
     accent: '#616e87',
+    accentLight: '#5C7CFA',
     success: '#4CAF50',
     error: '#ff6b6b',
     warning: '#FFD700',

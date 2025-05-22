@@ -35,6 +35,28 @@ export function parseDate(input) {
   // Lowercase and trim the input
   input = input.toLowerCase().trim();
   
+  // Check for "today" and "tomorrow" first
+  const todayMatch = input.match(/\b(today|tod)\b/);
+  if (todayMatch) {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return { 
+      date, 
+      match: todayMatch[0]
+    };
+  }
+  
+  const tomorrowMatch = input.match(/\b(tomorrow|tom)\b/);
+  if (tomorrowMatch) {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    date.setHours(0, 0, 0, 0);
+    return { 
+      date, 
+      match: tomorrowMatch[0]
+    };
+  }
+  
   // Try various parsing strategies
   
   // 1. Check for date formats like MM/DD or M/D

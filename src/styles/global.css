@@ -1,0 +1,33 @@
+/* Help Popup Animations */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Apply animations to help popup elements */
+.date-picker-container {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.time-wheel-container {
+  animation: slideIn 0.3s ease forwards;
+}
+
+.task-input-field {
+  animation: scaleIn 0.3s ease forwards;
+} 
